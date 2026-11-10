@@ -35,6 +35,7 @@ export type State = {
   work: { companies: Company[]; functions: string[]; goals: Record<string, { y: Record<string, Goal>; m: Record<string, Goal>; w: Record<string, Goal> }>; orders: Order[]; leads?: Lead[]; migrated?: boolean; unit?: string };
   net: { meetings: Meeting[] };
   gym: Gym;
+  billing: import("./billing").Billing | null;
   tasks: Task[]; focus: Focus[]; workouts: Workout[];
 };
 export type Exercise = { id: string; name: string; muscle: string; equip?: string; kind: "weight" | "bw" | "time"; custom?: boolean; lib?: string };
@@ -52,6 +53,7 @@ export function blank(): State {
     work: { companies: COMPANIES_DEFAULT.map((c) => ({ ...c })), functions: [...FUNCTIONS], goals: {}, orders: [], migrated: false, unit: "Cr" },
     net: { meetings: [] },
     gym: { exercises: [], routines: [], active: null, rest: 90 },
+    billing: null,
     tasks: [], focus: [], workouts: [],
   };
 }

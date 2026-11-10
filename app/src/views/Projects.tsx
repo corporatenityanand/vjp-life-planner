@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty } from "@/components/bits";
+import { billsForOrder, lakh } from "@/lib/billing";
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { setUI } from "@/components/ui-state";
@@ -93,6 +94,11 @@ function Canvas({ o, focus, setFocus }: { o: Order; focus: boolean; setFocus: (v
         <Button variant="outline" onClick={() => setUI({ orderSheet: o.id })}><FileText />Details & documents</Button>
         <Button variant={focus ? "secondary" : "outline"} onClick={() => setFocus(!focus)}>{focus ? <Minimize2 /> : <Maximize2 />}{focus ? "Exit focus" : "Focus"}</Button>
       </div>
+      {(() => { const bs = billsForOrder(o); if (!bs.length) return null; const ti = bs.filter((b) => b.status !== "PI"); const due = ti.filter((b) => b.bal >= 1);
+        return <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Billing</span>
+          <span>Billed <b className="num">{lakh(ti.reduce((n, b) => n + b.base, 0))}</b> <span className="text-muted-foreground">({ti.length} bills)</span></span><span>Received <b className="num">{lakh(ti.reduce((n, b) => n + b.paid, 0))}</b></span>
+          <span className={cn(due.length && "text-q1")}>Due <b className="num">{lakh(due.reduce((n, b) => n + b.bal, 0))}</b>{due.length ? ` on ${due.length} bill${due.length > 1 ? "s" : ""}` : ""}</span>
+          <span className="text-xs text-muted-foreground">Matched on {Array.from(new Set(bs.map((b) => b.site || b.client))).slice(0, 3).join(", ")}</span></div>; })()}
       {closing && !focus && <Closure o={o} />}
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 text-sm"><Switch checked={showDone} onCheckedChange={setShowDone} />Show done</label>

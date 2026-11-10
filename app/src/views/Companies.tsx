@@ -17,6 +17,8 @@ import { TaskRow } from "@/components/TaskRow";
 import { setUI, useUI } from "@/components/ui-state";
 import { ChevronLeft, ChevronRight, Settings2, X } from "lucide-react";
 import { Projects } from "./Projects";
+import { BillingTab, useAutoBilling } from "./BillingView";
+import { billedBetween, rupeesToUnit } from "@/lib/billing";
 import { OrderSheet } from "./Sales";
 
 type Per = "y" | "m" | "w";
@@ -27,6 +29,9 @@ const getGoal = (c: string, p: Per, k: string): Goal => S.work.goals[c]?.[p]?.[k
 function setGoal(c: string, p: Per, k: string, patch: Partial<Goal>) {
   update((S) => { const g = (S.work.goals[c] = S.work.goals[c] || { y: {}, m: {}, w: {} }); g[p] = g[p] || {}; g[p][k] = { ...(g[p][k] || {}), ...patch }; });
 }
+/** Revenue actual: from the billing app when it covers this company, else what was typed in. */
+const autoRev = (c: string, p: Per, k: string) => { const [a, b] = p === "y" ? [k + "-01-01", k + "-12-31"] : p === "m" ? [k + "-01", k + "-31"] : [k, addDays(k, 6)]; const v = billedBetween(c, a, b); return v == null ? null : +rupeesToUnit(v).toFixed(2); };
+const revAct = (c: string, p: Per, k: string, g: Goal) => autoRev(c, p, k) ?? g.revAct;
 const num = (v: string) => (v === "" ? null : +v);
 const pct = (a?: number | null, t?: number | null) => (t ? Math.round(((a || 0) / t) * 100) : 0);
 const money = (v?: number | null) => (v == null ? "–" : `₹${(+v).toLocaleString("en-IN", { maximumFractionDigits: 2 })} ${S.work.unit || "Cr"}`);
@@ -45,6 +50,7 @@ function GoalCard({ c }: { c: string }) {
   React.useEffect(() => setText(getGoal(c, p, k).text || ""), [c, p, k]);
   const kids = p === "y" ? Object.entries(S.work.goals[c]?.m || {}).filter(([kk]) => kk.startsWith(k)) : p === "m" ? Object.entries(S.work.goals[c]?.w || {}).filter(([kk]) => kk.slice(0, 7) === k) : [];
   const kidRev = kids.reduce((n, [, x]) => n + (x.revAct || 0), 0);
+  const auto = autoRev(c, p, k); const G = { ...g, revAct: auto ?? g.revAct };
   return (
     <Card>
       <CardHeader className="flex-row flex-wrap items-center gap-2 space-y-0">
@@ -58,13 +64,15 @@ function GoalCard({ c }: { c: string }) {
         <div className="grid gap-4 sm:grid-cols-2">
           {([["rev", "revAct", "Revenue"], ["profit", "profAct", "Profit"]] as const).map(([t, a, lab]) => (
             <div key={t} className="rounded-lg border p-3">
-              <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">{lab}</span><span className="text-xs text-muted-foreground num">{pct(g[a], g[t])}% of target</span></div>
-              <Progress value={pct(g[a], g[t])} className="mt-2" indicatorClassName={t === "rev" ? "bg-fin" : "bg-brand"} />
-              <div className="mt-3 grid grid-cols-2 gap-2"><NumField label={`Target (₹ ${S.work.unit || "Cr"})`} value={g[t]} onCommit={(v) => setGoal(c, p, k, { [t]: v } as any)} /><NumField label="Actual so far" value={g[a]} onCommit={(v) => setGoal(c, p, k, { [a]: v } as any)} /></div>
+              <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">{lab}</span><span className="text-xs text-muted-foreground num">{pct(G[a], g[t])}% of target</span></div>
+              <Progress value={pct(G[a], g[t])} className="mt-2" indicatorClassName={t === "rev" ? "bg-fin" : "bg-brand"} />
+              <div className="mt-3 grid grid-cols-2 gap-2"><NumField label={`Target (₹ ${S.work.unit || "Cr"})`} value={g[t]} onCommit={(v) => setGoal(c, p, k, { [t]: v } as any)} />
+                {t === "rev" && auto != null ? <div className="space-y-1"><Label>Billed so far</Label><div className="flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-semibold num">{auto}</div><p className="text-[11px] text-muted-foreground">From the billing app: taxable value of tax invoices</p></div>
+                  : <NumField label="Actual so far" value={g[a]} onCommit={(v) => setGoal(c, p, k, { [a]: v } as any)} />}</div>
             </div>))}
         </div>
         {kids.length > 0 && <p className="text-xs text-muted-foreground">{p === "y" ? "Months" : "Weeks"} with goals: {kids.length}. Revenue logged across them: {money(kidRev)}.</p>}
-        <p className="text-xs text-muted-foreground">Actuals are typed in for now. Once I can read your billing app, they'll fill in automatically.</p>
+        <p className="text-xs text-muted-foreground">{auto != null ? "Revenue comes from the billing app. Profit is still typed in." : "Actuals are typed in. Connect the billing app (Billing tab) and revenue fills itself where it has bills for this company."}</p>
       </CardContent>
     </Card>);
 }
@@ -120,8 +128,8 @@ function Overview() {
             <CardHeader><CardTitle className="flex items-center gap-2"><CompanyDot id={c.id} className="h-3 w-3" />{c.name}</CardTitle><CardDescription>{gm.text || gy.text || "No goal set for this month yet."}</CardDescription></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><div className="text-xs text-muted-foreground">Revenue · {fmtMonth(m).split(" ")[0]}</div><div className="font-semibold num">{money(gm.revAct)} <span className="text-xs font-normal text-muted-foreground">of {money(gm.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(gm.revAct, gm.rev)} indicatorClassName="bg-fin" /></div>
-                <div><div className="text-xs text-muted-foreground">Revenue · {y}</div><div className="font-semibold num">{money(gy.revAct)} <span className="text-xs font-normal text-muted-foreground">of {money(gy.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(gy.revAct, gy.rev)} indicatorClassName="bg-fin" /></div>
+                <div><div className="text-xs text-muted-foreground">Revenue · {fmtMonth(m).split(" ")[0]}</div><div className="font-semibold num">{money(revAct(c.id, "m", m, gm))} <span className="text-xs font-normal text-muted-foreground">of {money(gm.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(revAct(c.id, "m", m, gm), gm.rev)} indicatorClassName="bg-fin" /></div>
+                <div><div className="text-xs text-muted-foreground">Revenue · {y}</div><div className="font-semibold num">{money(revAct(c.id, "y", y, gy))} <span className="text-xs font-normal text-muted-foreground">of {money(gy.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(revAct(c.id, "y", y, gy), gy.rev)} indicatorClassName="bg-fin" /></div>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"><span><b className="text-foreground num">{open.length}</b> open tasks</span><span><b className="text-q1 num">{q1}</b> Q1</span><span><b className="text-foreground num">{un}</b> unrated</span><span><b className="text-foreground num">{orders}</b> live orders</span></div>
             </CardContent>
@@ -147,7 +155,7 @@ function CompanySettings({ onClose }: { onClose: () => void }) {
 }
 
 export function Companies() {
-  useStore(); const ui = useUI();
+  useStore(); const ui = useUI(); useAutoBilling();
   const [settings, setSettings] = React.useState(false);
   const [tab, setTab] = React.useState(() => { try { return localStorage.getItem("lp2-cotab") || "projects"; } catch { return "projects"; } });
   const pickTab = (v: string) => { setTab(v); try { localStorage.setItem("lp2-cotab", v); } catch {} };
@@ -166,8 +174,8 @@ export function Companies() {
       </div>
       {settings && <CompanySettings onClose={() => setSettings(false)} />}
       {!c ? <Overview /> : <div className="space-y-4">
-        <Tabs value={tab} onValueChange={pickTab}><TabsList><TabsTrigger value="projects">Projects</TabsTrigger><TabsTrigger value="functions">All functions</TabsTrigger><TabsTrigger value="goals">Goals</TabsTrigger></TabsList></Tabs>
-        {tab === "projects" ? <Projects key={c.id} c={c.id} /> : tab === "functions" ? <FunctionsBoard c={c.id} /> : <GoalCard key={c.id} c={c.id} />}
+        <Tabs value={tab} onValueChange={pickTab}><TabsList><TabsTrigger value="projects">Projects</TabsTrigger><TabsTrigger value="functions">All functions</TabsTrigger><TabsTrigger value="goals">Goals</TabsTrigger><TabsTrigger value="billing">Billing</TabsTrigger></TabsList></Tabs>
+        {tab === "projects" ? <Projects key={c.id} c={c.id} /> : tab === "functions" ? <FunctionsBoard c={c.id} /> : tab === "billing" ? <BillingTab c={c.id} /> : <GoalCard key={c.id} c={c.id} />}
       </div>}
       <OrderSheet />
     </div>);

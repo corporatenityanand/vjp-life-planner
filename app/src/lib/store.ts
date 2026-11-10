@@ -4,7 +4,7 @@
 import { useSyncExternalStore } from "react";
 import { blank, type State, migrate, seedGym } from "./model";
 
-const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net", "gym"] as const;
+const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net", "gym", "billing"] as const;
 const LS_DOCS = "lp2-docs", LS_DIRTY = "lp2-dirty", LS_CFG = "lp-sheet";
 const isObj = (x: any) => x && typeof x === "object" && !Array.isArray(x);
 export const canon = (x: any) => JSON.stringify(x, (_k, v) => (isObj(v) ? Object.keys(v).sort().reduce((o: any, kk) => ((o[kk] = v[kk]), o), {}) : v));
