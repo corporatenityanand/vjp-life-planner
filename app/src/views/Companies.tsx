@@ -22,15 +22,18 @@ import { billedBetween, rupeesToUnit } from "@/lib/billing";
 import { OrderSheet } from "./Sales";
 
 type Per = "y" | "m" | "w";
-const curKey = (p: Per) => (p === "y" ? todayStr().slice(0, 4) : p === "m" ? todayStr().slice(0, 7) : weekStart(todayStr()));
+/** Year goals run on the Indian financial year: key "2026" is FY 2026–27, April 2026 to March 2027. */
+const fyOf = (d: string) => String(+d.slice(0, 4) - (+d.slice(5, 7) < 4 ? 1 : 0));
+const fyLabel = (k: string) => `FY ${k}–${String(+k + 1).slice(2)}`;
+const curKey = (p: Per) => (p === "y" ? fyOf(todayStr()) : p === "m" ? todayStr().slice(0, 7) : weekStart(todayStr()));
 const stepKey = (p: Per, k: string, n: number) => (p === "y" ? String(+k + n) : p === "m" ? addMonths(k, n) : addDays(k, 7 * n));
-const keyLabel = (p: Per, k: string) => (p === "y" ? `Year ${k}` : p === "m" ? fmtMonth(k) : `Week of ${fmtDay(k)}`);
+const keyLabel = (p: Per, k: string) => (p === "y" ? fyLabel(k) : p === "m" ? fmtMonth(k) : `Week of ${fmtDay(k)}`);
 const getGoal = (c: string, p: Per, k: string): Goal => S.work.goals[c]?.[p]?.[k] || {};
 function setGoal(c: string, p: Per, k: string, patch: Partial<Goal>) {
   update((S) => { const g = (S.work.goals[c] = S.work.goals[c] || { y: {}, m: {}, w: {} }); g[p] = g[p] || {}; g[p][k] = { ...(g[p][k] || {}), ...patch }; });
 }
 /** Revenue actual: from the billing app when it covers this company, else what was typed in. */
-const autoRev = (c: string, p: Per, k: string) => { const [a, b] = p === "y" ? [k + "-01-01", k + "-12-31"] : p === "m" ? [k + "-01", k + "-31"] : [k, addDays(k, 6)]; const v = billedBetween(c, a, b); return v == null ? null : +rupeesToUnit(v).toFixed(2); };
+const autoRev = (c: string, p: Per, k: string) => { const [a, b] = p === "y" ? [k + "-04-01", +k + 1 + "-03-31"] : p === "m" ? [k + "-01", k + "-31"] : [k, addDays(k, 6)]; const v = billedBetween(c, a, b); return v == null ? null : +rupeesToUnit(v).toFixed(2); };
 const revAct = (c: string, p: Per, k: string, g: Goal) => autoRev(c, p, k) ?? g.revAct;
 const num = (v: string) => (v === "" ? null : +v);
 const pct = (a?: number | null, t?: number | null) => (t ? Math.round(((a || 0) / t) * 100) : 0);
@@ -48,7 +51,7 @@ function GoalCard({ c }: { c: string }) {
   const g = getGoal(c, p, k);
   const [text, setText] = React.useState(g.text || "");
   React.useEffect(() => setText(getGoal(c, p, k).text || ""), [c, p, k]);
-  const kids = p === "y" ? Object.entries(S.work.goals[c]?.m || {}).filter(([kk]) => kk.startsWith(k)) : p === "m" ? Object.entries(S.work.goals[c]?.w || {}).filter(([kk]) => kk.slice(0, 7) === k) : [];
+  const kids = p === "y" ? Object.entries(S.work.goals[c]?.m || {}).filter(([kk]) => fyOf(kk) === k) : p === "m" ? Object.entries(S.work.goals[c]?.w || {}).filter(([kk]) => kk.slice(0, 7) === k) : [];
   const kidRev = kids.reduce((n, [, x]) => n + (x.revAct || 0), 0);
   const auto = autoRev(c, p, k); const G = { ...g, revAct: auto ?? g.revAct };
   return (
@@ -59,7 +62,7 @@ function GoalCard({ c }: { c: string }) {
         <div className="flex items-center"><Button variant="ghost" size="icon-sm" onClick={() => setK(stepKey(p, k, -1))}><ChevronLeft /></Button><span className="min-w-[130px] text-center text-xs font-medium num">{keyLabel(p, k)}</span><Button variant="ghost" size="icon-sm" onClick={() => setK(stepKey(p, k, 1))}><ChevronRight /></Button></div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-1"><Label>Where the company should be by the end of this {p === "y" ? "year" : p === "m" ? "month" : "week"} (one line)</Label>
+        <div className="space-y-1"><Label>Where the company should be by the end of this {p === "y" ? "financial year" : p === "m" ? "month" : "week"} (one line)</Label>
           <Input value={text} onChange={(e) => setText(e.target.value)} onBlur={() => text !== (g.text || "") && setGoal(c, p, k, { text })} placeholder="e.g. 3 new work orders signed and RA bills cleared within 30 days" className="text-base font-medium" /></div>
         <div className="grid gap-4 sm:grid-cols-2">
           {([["rev", "revAct", "Revenue"], ["profit", "profAct", "Profit"]] as const).map(([t, a, lab]) => (
@@ -129,7 +132,7 @@ function Overview() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><div className="text-xs text-muted-foreground">Revenue · {fmtMonth(m).split(" ")[0]}</div><div className="font-semibold num">{money(revAct(c.id, "m", m, gm))} <span className="text-xs font-normal text-muted-foreground">of {money(gm.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(revAct(c.id, "m", m, gm), gm.rev)} indicatorClassName="bg-fin" /></div>
-                <div><div className="text-xs text-muted-foreground">Revenue · {y}</div><div className="font-semibold num">{money(revAct(c.id, "y", y, gy))} <span className="text-xs font-normal text-muted-foreground">of {money(gy.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(revAct(c.id, "y", y, gy), gy.rev)} indicatorClassName="bg-fin" /></div>
+                <div><div className="text-xs text-muted-foreground">Revenue · {fyLabel(y)}</div><div className="font-semibold num">{money(revAct(c.id, "y", y, gy))} <span className="text-xs font-normal text-muted-foreground">of {money(gy.rev)}</span></div><Progress className="mt-1 h-1.5" value={pct(revAct(c.id, "y", y, gy), gy.rev)} indicatorClassName="bg-fin" /></div>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground"><span><b className="text-foreground num">{open.length}</b> open tasks</span><span><b className="text-q1 num">{q1}</b> Q1</span><span><b className="text-foreground num">{un}</b> unrated</span><span><b className="text-foreground num">{orders}</b> live orders</span></div>
             </CardContent>
