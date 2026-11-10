@@ -18,14 +18,16 @@ import { CompanySelect } from "@/components/pickers";
 import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { setUI, useUI } from "@/components/ui-state";
-import { Plus, Users, MapPin, CalendarDays } from "lucide-react";
+import { Plus, Users, MapPin, CalendarDays, Target } from "lucide-react";
+import { Docs } from "@/components/Docs";
+import { Leads, leads } from "./Leads";
 
 const stLabel = (s: string) => ORDER_STATUS.find(([k]) => k === s)?.[1] || s;
 const stTone: Record<string, string> = { pipeline: "bg-q3/15 text-q3", ongoing: "bg-fin/15 text-fin", finalbill: "bg-q2/15 text-q2", halted: "bg-q1/15 text-q1", complete: "bg-muted text-muted-foreground", cancelled: "bg-muted text-muted-foreground line-through" };
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) { return <div className={cn("space-y-1.5", className)}><Label>{label}</Label>{children}</div>; }
 
-function OrderSheet() {
+export function OrderSheet() {
   const ui = useUI(); useStore();
   const o = S.work.orders.find((x) => x.id === ui.orderSheet);
   if (!o) return null;
@@ -48,6 +50,8 @@ function OrderSheet() {
           <Field label="Receivables"><Input defaultValue={o.receivables || ""} onBlur={(e) => set({ receivables: e.target.value })} /></Field>
         </div>
         <Field label="Notes"><Textarea defaultValue={o.notes || ""} onBlur={(e) => set({ notes: e.target.value })} className="min-h-[80px]" /></Field>
+        {o.lead && leads().some((l) => l.id === o.lead) && <button className="text-left text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={() => setUI({ orderSheet: null, leadSheet: o.lead! })}>Came from lead: {leads().find((l) => l.id === o.lead)!.title}</button>}
+        <div><div className="mb-1.5 text-sm font-semibold">Documents <span className="font-normal text-muted-foreground num">{(o.docs || []).length || ""}</span></div><Docs owner={o} folder={`Orders/${o.title.replace(/[\\/]/g, "-")}`} /></div>
         <div>
           <div className="mb-1 text-sm font-semibold">Tasks on this order <span className="font-normal text-muted-foreground">{tasks.filter((t) => !t.done).length} open</span></div>
           <QuickAdd preset={{ company: o.company, order: o.id }} placeholder="Add a task to this order…" />
@@ -136,11 +140,12 @@ export function Sales() {
   const [tab, setTab] = React.useState(() => { try { return localStorage.getItem("lp2-salestab") || "orders"; } catch { return "orders"; } });
   return (
     <div>
-      <PageHead title="Sales & network" sub="Sales orders are the engine. Networking is how they come in.">
+      <PageHead title="Sales & network" sub="Leads become sales orders. Networking is how leads come in.">
         <CompanySelect value={ui.company} allLabel="All companies" onChange={(v) => setUI({ company: v || "all" })} className="w-[170px]" />
       </PageHead>
       <Tabs value={tab} onValueChange={(v) => { setTab(v); try { localStorage.setItem("lp2-salestab", v); } catch {} }}>
-        <TabsList><TabsTrigger value="orders">Sales orders</TabsTrigger><TabsTrigger value="net"><Users className="h-4 w-4" />Networking</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="leads"><Target className="h-4 w-4" />Leads</TabsTrigger><TabsTrigger value="orders">Sales orders</TabsTrigger><TabsTrigger value="net"><Users className="h-4 w-4" />Networking</TabsTrigger></TabsList>
+        <TabsContent value="leads"><Leads /></TabsContent>
         <TabsContent value="orders"><Orders /></TabsContent>
         <TabsContent value="net"><Networking /></TabsContent>
       </Tabs>

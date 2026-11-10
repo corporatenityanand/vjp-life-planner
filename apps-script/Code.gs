@@ -18,6 +18,7 @@ function doPost(e) {
   let body;
   try { body = JSON.parse(e.postData.contents); } catch (err) { return out_({ ok: false, error: 'Bad request' }); }
   if (!ok_(body.token)) return out_({ ok: false, error: 'Wrong token' });
+  if (body.upload) return out_({ ok: true, file: upload_(body.upload) });
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -44,6 +45,16 @@ function doPost(e) {
     lock.releaseLock();
   }
 }
+
+/** Saves an attached document to Google Drive: My Drive > VJP Life Planner > <folder>. */
+function upload_(u) {
+  let dir = folder_(DriveApp.getRootFolder(), 'VJP Life Planner');
+  String(u.folder || 'Files').split('/').forEach(function (p) { if (p) dir = folder_(dir, p.slice(0, 80)); });
+  const blob = Utilities.newBlob(Utilities.base64Decode(u.data), u.mime || 'application/octet-stream', u.name || 'file');
+  const f = dir.createFile(blob);
+  return { id: f.getId(), url: f.getUrl(), name: f.getName(), size: f.getSize() };
+}
+function folder_(parent, name) { const it = parent.getFoldersByName(name); return it.hasNext() ? it.next() : parent.createFolder(name); }
 
 function readAll_() {
   const sh = sheet_();

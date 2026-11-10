@@ -81,6 +81,15 @@ async function callSheet(method: "GET" | "POST", body?: any) {
   if (!j.ok) throw new Error(j.error || "Sheet refused");
   return j;
 }
+/** Uploads a file to the user's Google Drive through the Sheet's Apps Script. Throws "UPGRADE" if the script is the older version. */
+export async function uploadFile(file: File, folder: string): Promise<{ id: string; url: string; name: string; size: number }> {
+  if (!CFG) throw new Error("Connect the Google Sheet first (Review tab).");
+  if (file.size > 20 * 1024 * 1024) throw new Error("Files up to 20 MB only. Paste a Drive link for bigger ones.");
+  const data: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+  const j = await callSheet("POST", { upload: { name: file.name, mime: file.type, data, folder } });
+  if (!j.file) throw new Error("UPGRADE");
+  return j.file;
+}
 export async function pushNow(manual: boolean) {
   if (!CFG) { if (manual) toast("Connect your Google Sheet first (Review → Your data)."); return; }
   if (inFlight) { again = true; return; }

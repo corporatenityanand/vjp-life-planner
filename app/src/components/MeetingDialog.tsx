@@ -11,7 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CompanySelect } from "./pickers";
 import { setUI, useUI } from "./ui-state";
 
-const blankM = (p: any): Meeting => ({ id: "", title: "", who: "", org: "", company: p?.company && p.company !== "all" ? p.company : null, purpose: "", date: p?.date ?? null, week: p?.date ? null : weekStart(todayStr()), start: p?.start || "", mins: 60, place: "", status: "planned", outcome: "", followUp: "" });
+const blankM = (p: any): Meeting => ({ id: "", title: "", who: "", org: "", company: p?.company && p.company !== "all" ? p.company : null, lead: p?.lead || null, purpose: "", date: p?.date ?? null, week: p?.date ? null : weekStart(todayStr()), start: p?.start || "", mins: 60, place: "", status: "planned", outcome: "", followUp: "" });
 
 export function MeetingDialog() {
   const ui = useUI(); useStore();
@@ -29,7 +29,7 @@ export function MeetingDialog() {
       const newFollow = m.status === "done" && m.followUp?.trim() && !(existing && existing.status === "done" && existing.followUp === m.followUp);
       if (existing) Object.assign(existing, rec); else S.net.meetings.push({ ...rec, id: uid(), created: new Date().toISOString() });
       if (newFollow) {
-        newTask(S, m.followUp.trim(), { company: m.company || null, fn: NETWORKING, week: weekStart(todayStr()) });
+        newTask(S, m.followUp.trim(), { company: m.company || null, fn: NETWORKING, lead: m.lead || null, week: weekStart(todayStr()) });
         toast("Follow-up added to this week's tasks.");
       }
     });

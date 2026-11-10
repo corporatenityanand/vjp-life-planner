@@ -19,15 +19,20 @@ export const MILESTONES = [1, 3, 7, 14, 30, 60, 90, 180, 365];
 
 export type Goal = { text?: string; rev?: number | null; profit?: number | null; revAct?: number | null; profAct?: number | null };
 export type Company = { id: string; short: string; name: string; color: string };
-export type Order = { id: string; company: string; title: string; client?: string; kind: "WO" | "PO"; value?: number | null; status: string; job?: string; completion?: string; receivables?: string; notes?: string; legacySite?: string; created?: string };
-export type Meeting = { id: string; title: string; who?: string; org?: string; company?: string | null; purpose?: string; date?: string | null; week?: string | null; start?: string; mins?: number; place?: string; status: "planned" | "done" | "cancelled"; outcome?: string; followUp?: string; created?: string };
+export type Order = { id: string; company: string; title: string; client?: string; kind: "WO" | "PO"; value?: number | null; status: string; job?: string; completion?: string; receivables?: string; notes?: string; legacySite?: string; created?: string; docs?: Doc[]; lead?: string | null };
+export type Doc = { id: string; name: string; url: string; kind: "drive" | "link"; size?: number; at: string };
+export type LeadLog = { at: string; text: string; stage?: string };
+export type Lead = { id: string; company: string; title: string; org?: string; contact?: string; phone?: string; email?: string; source?: string; value?: number | null; stage: string; next?: string; nextDate?: string | null; notes?: string; docs?: Doc[]; log: LeadLog[]; created: string; order?: string | null; lostReason?: string };
+export const LEAD_STAGES: [string, string][] = [["new", "New"], ["contacted", "Contacted"], ["meeting", "Meeting held"], ["proposal", "Proposal sent"], ["negotiation", "Negotiation"], ["won", "Won"], ["lost", "Lost"]];
+export const OPEN_STAGES = ["new", "contacted", "meeting", "proposal", "negotiation"];
+export type Meeting = { id: string; title: string; who?: string; org?: string; company?: string | null; purpose?: string; date?: string | null; week?: string | null; start?: string; mins?: number; place?: string; status: "planned" | "done" | "cancelled"; lead?: string | null; outcome?: string; followUp?: string; created?: string };
 export type Task = { id: string; t: string; p: string; date: string | null; week?: string | null; u: boolean | null; i: boolean | null; imp?: number | null; top: number; done: boolean; doneAt?: string | null; carried?: number; created?: string;
-  company?: string | null; fn?: string | null; order?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any };
+  company?: string | null; fn?: string | null; order?: string | null; lead?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any };
 export type Focus = { id: string; at: string; mins: number; taskId?: string | null; p?: string; label?: string; company?: string | null; fn?: string | null; kind?: "focus" | "manual" | "meeting" };
 export type State = {
   settings: { work: number; short: number; long: number; every: number; sound: boolean; netPerWeek?: number };
   projects: any; goals: any; vices: { list: any[] }; weeks: Record<string, any>; fitlog: any; famlog: any;
-  work: { companies: Company[]; functions: string[]; goals: Record<string, { y: Record<string, Goal>; m: Record<string, Goal>; w: Record<string, Goal> }>; orders: Order[]; migrated?: boolean; unit?: string };
+  work: { companies: Company[]; functions: string[]; goals: Record<string, { y: Record<string, Goal>; m: Record<string, Goal>; w: Record<string, Goal> }>; orders: Order[]; leads?: Lead[]; migrated?: boolean; unit?: string };
   net: { meetings: Meeting[] };
   gym: Gym;
   tasks: Task[]; focus: Focus[]; workouts: Workout[];

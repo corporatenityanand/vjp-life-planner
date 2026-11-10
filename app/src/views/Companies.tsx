@@ -16,6 +16,8 @@ import { QuickAdd } from "@/components/QuickAdd";
 import { TaskRow } from "@/components/TaskRow";
 import { setUI, useUI } from "@/components/ui-state";
 import { ChevronLeft, ChevronRight, Settings2, X } from "lucide-react";
+import { Projects } from "./Projects";
+import { OrderSheet } from "./Sales";
 
 type Per = "y" | "m" | "w";
 const curKey = (p: Per) => (p === "y" ? todayStr().slice(0, 4) : p === "m" ? todayStr().slice(0, 7) : weekStart(todayStr()));
@@ -147,10 +149,12 @@ function CompanySettings({ onClose }: { onClose: () => void }) {
 export function Companies() {
   useStore(); const ui = useUI();
   const [settings, setSettings] = React.useState(false);
+  const [tab, setTab] = React.useState(() => { try { return localStorage.getItem("lp2-cotab") || "projects"; } catch { return "projects"; } });
+  const pickTab = (v: string) => { setTab(v); try { localStorage.setItem("lp2-cotab", v); } catch {} };
   const c = S.work.companies.find((x) => x.id === ui.company);
   return (
     <div>
-      <PageHead title={c ? c.name : "Companies"} sub={c ? "Goal for the period, then every function's open tasks. Rate them and give them a week." : "Pick a company to set its goals and work its functions."}>
+      <PageHead title={c ? c.name : "Companies"} sub={c ? "Pick a project to work its tasks by function, or see every function at once." : "Pick a company to work its projects, functions and goals."}>
         <Button variant="outline" onClick={() => setSettings(!settings)}><Settings2 />Edit companies & functions</Button>
       </PageHead>
       <div className="mb-5 flex gap-1 overflow-x-auto border-b">
@@ -161,6 +165,10 @@ export function Companies() {
           </button>))}
       </div>
       {settings && <CompanySettings onClose={() => setSettings(false)} />}
-      {!c ? <Overview /> : <div className="space-y-6"><GoalCard key={c.id} c={c.id} /><FunctionsBoard c={c.id} /></div>}
+      {!c ? <Overview /> : <div className="space-y-4">
+        <Tabs value={tab} onValueChange={pickTab}><TabsList><TabsTrigger value="projects">Projects</TabsTrigger><TabsTrigger value="functions">All functions</TabsTrigger><TabsTrigger value="goals">Goals</TabsTrigger></TabsList></Tabs>
+        {tab === "projects" ? <Projects key={c.id} c={c.id} /> : tab === "functions" ? <FunctionsBoard c={c.id} /> : <GoalCard key={c.id} c={c.id} />}
+      </div>}
+      <OrderSheet />
     </div>);
 }
