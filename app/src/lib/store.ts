@@ -2,9 +2,9 @@
    Every edit is cached in this browser at once and its records marked unsaved; unsaved records win over what the Sheet sends
    until the Sheet confirms it stored them. */
 import { useSyncExternalStore } from "react";
-import { blank, type State, migrate } from "./model";
+import { blank, type State, migrate, seedGym } from "./model";
 
-const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net"] as const;
+const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net", "gym"] as const;
 const LS_DOCS = "lp2-docs", LS_DIRTY = "lp2-dirty", LS_CFG = "lp-sheet";
 const isObj = (x: any) => x && typeof x === "object" && !Array.isArray(x);
 export const canon = (x: any) => JSON.stringify(x, (_k, v) => (isObj(v) ? Object.keys(v).sort().reduce((o: any, kk) => ((o[kk] = v[kk]), o), {}) : v));
@@ -17,9 +17,12 @@ function toDocs(st: State) {
   const tb: Record<string, any[]> = {}, fb: Record<string, any[]> = {};
   st.tasks.forEach((t) => { const b = "tasks-" + (t.date ? t.date.slice(0, 7) : "someday"); (tb[b] = tb[b] || []).push(t); });
   st.focus.forEach((f) => { const b = "focus-" + f.at.slice(0, 7); (fb[b] = fb[b] || []).push(f); });
+  const gb: Record<string, any[]> = {};
+  st.workouts.forEach((w) => { const b = "gym-" + w.start.slice(0, 7); (gb[b] = gb[b] || []).push(w); });
   for (const k in tb) m[k] = { items: tb[k] };
   for (const k in fb) m[k] = { items: fb[k] };
-  for (const k of known) if (/^(tasks|focus)-/.test(k) && !m[k]) m[k] = { items: [] };
+  for (const k in gb) m[k] = { items: gb[k] };
+  for (const k of known) if (/^(tasks|focus|gym)-/.test(k) && !m[k]) m[k] = { items: [] };
   return m;
 }
 function fromDocs(map: Record<string, any>): State {
@@ -29,6 +32,7 @@ function fromDocs(map: Record<string, any>): State {
     known.add(k);
     if (k.startsWith("tasks-")) st.tasks.push(...(map[k].items || []));
     if (k.startsWith("focus-")) st.focus.push(...(map[k].items || []));
+    if (k.startsWith("gym-")) st.workouts.push(...(map[k].items || []));
   }
   return st;
 }
@@ -109,7 +113,7 @@ export async function connect() {
     if (DIRTY.size) pushNow(false); else setSync("synced");
   } catch (e: any) { lastErr = e.message || String(e); setSync("error", "couldn't load from Sheet (" + lastErr + ")"); }
 }
-function runMigrate() { if (migrate(S)) { update(() => {}); toast("Moved your projects into the new Companies and Sales orders layout."); } else emit(); }
+function runMigrate() { const m = migrate(S); const g = seedGym(S); if (m || g) update(() => {}); else emit(); if (m) toast("Moved your projects into the new Companies and Sales orders layout."); }
 export function setConfig(c: { url: string; token: string } | null) {
   CFG = c; try { if (c) localStorage.setItem(LS_CFG, JSON.stringify(c)); else localStorage.removeItem(LS_CFG); } catch {}
   dbReady = false; return connect();

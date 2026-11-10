@@ -33,8 +33,9 @@ It uses the same Google Sheet and Apps Script as v1, so nothing changes on the S
 
 - Develop: `cd app && npm install && npm run dev`
 - Publish: `cd app && npm run deploy` (type-checks, builds, copies `index.html` + `assets/` to the repo root), then commit and push.
-- v1 is kept at `legacy.html` for Fitness and Family until those are rebuilt.
+- v1 is kept at `legacy.html` as a fallback; nothing links to it any more.
 
 Data model added in v2: `work` (companies, functions, goals per year/month/week, sales orders), `net` (networking meetings);
 tasks gain `company`, `fn`, `order`, `week`. On first load v2 moves the v1 `projects` sites into sales orders and their open items into tasks
 (the `projects` record is left untouched as a backup).
+- Fitness: `gym` record (exercise library, routines, the workout in progress, rest timer) and finished workouts in monthly `gym-YYYY-MM` records.

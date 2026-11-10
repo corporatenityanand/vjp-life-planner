@@ -13,14 +13,18 @@ import { Sales } from "@/views/Sales";
 import { Focus, MiniTimer } from "@/views/Focus";
 import { Quit } from "@/views/Quit";
 import { Review } from "@/views/Review";
-import { CalendarDays, Building2, Handshake, Timer, ShieldCheck, LineChart, Sun, MoreHorizontal, Moon, Dumbbell, Save, Loader2 } from "lucide-react";
+const Fitness = React.lazy(() => import("@/views/Fitness").then((m) => ({ default: m.Fitness })));
+import { Family } from "@/views/Family";
+import { CalendarDays, Building2, Handshake, Timer, ShieldCheck, LineChart, Sun, MoreHorizontal, Moon, Dumbbell, Save, Loader2, Heart } from "lucide-react";
 
 const ROUTES = [
   { id: "today", label: "Today", icon: Sun, C: Today },
   { id: "week", label: "Week", icon: CalendarDays, C: Week },
   { id: "companies", label: "Companies", icon: Building2, C: Companies },
   { id: "sales", label: "Sales & network", short: "Sales", icon: Handshake, C: Sales },
+  { id: "fitness", label: "Fitness", icon: Dumbbell, C: Fitness },
   { id: "focus", label: "Focus", icon: Timer, C: Focus },
+  { id: "family", label: "Family", icon: Heart, C: Family },
   { id: "quit", label: "Quit", icon: ShieldCheck, C: Quit },
   { id: "review", label: "Review", icon: LineChart, C: Review },
 ];
@@ -52,9 +56,8 @@ export default function App() {
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="container flex h-14 items-center gap-2 px-4 sm:px-6 2xl:px-8">
           <a href="#week" className="mr-3 flex items-center gap-2 font-bold tracking-tight"><span className="flex gap-[3px]"><i className="h-2 w-2 rounded-[2px] bg-fin" /><i className="h-2 w-2 rounded-[2px] bg-fit" /><i className="h-2 w-2 rounded-[2px] bg-fam" /></span>VJP Life Planner</a>
-          <nav className="hidden items-center gap-0.5 lg:flex">
-            {ROUTES.map((r) => <a key={r.id} href={"#" + r.id} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground", route === r.id && "bg-secondary text-foreground")}><r.icon className="h-4 w-4" />{r.label}</a>)}
-            <a href="legacy.html#goals" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground" title="Fitness and family, until they're rebuilt"><Dumbbell className="h-4 w-4" />Fitness & family</a>
+          <nav className="hidden items-center gap-0.5 xl:flex">
+            {ROUTES.map((r) => <a key={r.id} href={"#" + r.id} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground", route === r.id && "bg-secondary text-foreground")}><r.icon className="h-4 w-4" />{r.short || r.label}</a>)}
           </nav>
           <div className="flex-1" />
           <MiniTimer />
@@ -62,20 +65,18 @@ export default function App() {
           <ThemeToggle />
           <Button size="sm" variant="brand" onClick={() => pushNow(true)} disabled={sync.saving}>{sync.saving ? <Loader2 className="animate-spin" /> : <Save />}Save</Button>
         </div>
-        <nav className="container hidden gap-0.5 overflow-x-auto px-4 pb-2 sm:flex lg:hidden">
+        <nav className="container hidden gap-0.5 overflow-x-auto px-4 pb-2 sm:flex xl:hidden">
           {ROUTES.map((r) => <a key={r.id} href={"#" + r.id} className={cn("flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground", route === r.id && "bg-secondary text-foreground")}><r.icon className="h-4 w-4" />{r.short || r.label}</a>)}
-          <a href="legacy.html#goals" className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground"><Dumbbell className="h-4 w-4" />Fitness</a>
         </nav>
       </header>
       {sync.mode === "local" && <div className="container mt-4 px-4 sm:px-6 2xl:px-8"><div className="rounded-lg border border-brand/40 bg-brand/10 px-4 py-2.5 text-sm">Not connected to your Google Sheet, so changes are saved on this device only. <a className="font-semibold underline" href="#review">Connect it</a></div></div>}
-      <main className="container px-4 pt-5 sm:px-6 sm:pt-7 2xl:px-8"><R.C /></main>
+      <main className="container px-4 pt-5 sm:px-6 sm:pt-7 2xl:px-8"><React.Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading…</div>}><R.C /></React.Suspense></main>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t bg-background/95 backdrop-blur sm:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         {phoneMain.map((r) => <a key={r.id} href={"#" + r.id} className={cn("flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-medium text-muted-foreground", route === r.id && "text-brand")}><r.icon className="h-5 w-5" />{r.short || r.label}</a>)}
         <DropdownMenu>
           <DropdownMenuTrigger className={cn("flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-medium text-muted-foreground", phoneMore.some((r) => r.id === route) && "text-brand")}><MoreHorizontal className="h-5 w-5" />More</DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top">
             {phoneMore.map((r) => <DropdownMenuItem key={r.id} onSelect={() => (location.hash = r.id)}><r.icon />{r.label}</DropdownMenuItem>)}
-            <DropdownMenuItem onSelect={() => (location.href = "legacy.html#goals")}><Dumbbell />Fitness & family</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>

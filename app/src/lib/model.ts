@@ -29,8 +29,15 @@ export type State = {
   projects: any; goals: any; vices: { list: any[] }; weeks: Record<string, any>; fitlog: any; famlog: any;
   work: { companies: Company[]; functions: string[]; goals: Record<string, { y: Record<string, Goal>; m: Record<string, Goal>; w: Record<string, Goal> }>; orders: Order[]; migrated?: boolean; unit?: string };
   net: { meetings: Meeting[] };
-  tasks: Task[]; focus: Focus[];
+  gym: Gym;
+  tasks: Task[]; focus: Focus[]; workouts: Workout[];
 };
+export type Exercise = { id: string; name: string; muscle: string; equip?: string; kind: "weight" | "bw" | "time"; custom?: boolean };
+export type WSet = { w?: number | null; r?: number | null; done?: boolean; warm?: boolean };
+export type WEx = { id: string; ex: string; sets: WSet[]; note?: string; target?: string };
+export type Workout = { id: string; start: string; end?: string | null; name: string; routine?: string | null; ex: WEx[]; notes?: string };
+export type Routine = { id: string; name: string; items: { ex: string; sets: number; reps: string }[]; note?: string };
+export type Gym = { exercises: Exercise[]; routines: Routine[]; active: Workout | null; rest: number; photos?: any[] };
 export function blank(): State {
   return {
     settings: { work: 25, short: 5, long: 15, every: 4, sound: true, netPerWeek: 3 },
@@ -39,7 +46,8 @@ export function blank(): State {
     vices: { list: [] }, weeks: {}, fitlog: { body: [], sessions: [] }, famlog: { events: [] },
     work: { companies: COMPANIES_DEFAULT.map((c) => ({ ...c })), functions: [...FUNCTIONS], goals: {}, orders: [], migrated: false, unit: "Cr" },
     net: { meetings: [] },
-    tasks: [], focus: [],
+    gym: { exercises: [], routines: [], active: null, rest: 90 },
+    tasks: [], focus: [], workouts: [],
   };
 }
 
@@ -113,7 +121,41 @@ export function timeEntries(S: State, from: string, to: string): TimeRow[] {
     rows.push({ company: c || "_none", fn: f.fn ?? t?.fn ?? (t && t.p !== "fin" ? PILLARS[t.p] : "") ?? "", mins: f.mins || 0 });
   });
   S.net.meetings.forEach((m) => { if (m.status !== "done" || !m.date || m.date < from || m.date > to) return; rows.push({ company: m.company || "_none", fn: NETWORKING, mins: m.mins || 60 }); });
+  S.workouts.forEach((w) => { const d = w.start.slice(0, 10); if (!w.end || d < from || d > to) return; rows.push({ company: "_life", fn: "Workout", mins: Math.max(1, Math.round((new Date(w.end).getTime() - new Date(w.start).getTime()) / 60000)) }); });
   return rows;
 }
 export const weekRange = (ws: string) => [ws, addDays(ws, 6)] as const;
 export { todayStr, weekStart, weekDays };
+
+/* ---------- gym ---------- */
+const EX: [string, string, string, Exercise["kind"]][] = [
+  ["Barbell bench press", "Chest", "Barbell", "weight"], ["Incline dumbbell press", "Chest", "Dumbbell", "weight"], ["Dumbbell bench press", "Chest", "Dumbbell", "weight"], ["Cable fly", "Chest", "Cable", "weight"], ["Push-up", "Chest", "Bodyweight", "bw"], ["Chest dip", "Chest", "Bodyweight", "bw"],
+  ["Pull-up", "Back", "Bodyweight", "bw"], ["Lat pulldown", "Back", "Cable", "weight"], ["Barbell row", "Back", "Barbell", "weight"], ["Seated cable row", "Back", "Cable", "weight"], ["One-arm dumbbell row", "Back", "Dumbbell", "weight"], ["Deadlift", "Back", "Barbell", "weight"],
+  ["Overhead press", "Shoulders", "Barbell", "weight"], ["Seated dumbbell press", "Shoulders", "Dumbbell", "weight"], ["Lateral raise", "Shoulders", "Dumbbell", "weight"], ["Face pull", "Shoulders", "Cable", "weight"], ["Rear delt fly", "Shoulders", "Dumbbell", "weight"],
+  ["Back squat", "Legs", "Barbell", "weight"], ["Front squat", "Legs", "Barbell", "weight"], ["Romanian deadlift", "Legs", "Barbell", "weight"], ["Leg press", "Legs", "Machine", "weight"], ["Bulgarian split squat", "Legs", "Dumbbell", "weight"], ["Walking lunge", "Legs", "Dumbbell", "weight"], ["Leg curl", "Legs", "Machine", "weight"], ["Leg extension", "Legs", "Machine", "weight"], ["Hip thrust", "Legs", "Barbell", "weight"], ["Standing calf raise", "Legs", "Machine", "weight"],
+  ["Barbell curl", "Arms", "Barbell", "weight"], ["Dumbbell curl", "Arms", "Dumbbell", "weight"], ["Hammer curl", "Arms", "Dumbbell", "weight"], ["Triceps pushdown", "Arms", "Cable", "weight"], ["Overhead triceps extension", "Arms", "Cable", "weight"], ["Skull crusher", "Arms", "Barbell", "weight"],
+  ["Plank", "Core", "Bodyweight", "time"], ["Hanging leg raise", "Core", "Bodyweight", "bw"], ["Cable crunch", "Core", "Cable", "weight"], ["Ab wheel rollout", "Core", "Bodyweight", "bw"],
+  ["Kettlebell swing", "Full body", "Kettlebell", "weight"], ["Farmer's carry", "Full body", "Dumbbell", "weight"], ["Burpee", "Full body", "Bodyweight", "bw"],
+];
+export const MUSCLES = ["Chest", "Back", "Shoulders", "Legs", "Arms", "Core", "Full body"];
+export function seedGym(S: State) {
+  if (S.gym.exercises.length) return false;
+  S.gym.exercises = EX.map(([name, muscle, equip, kind]) => ({ id: "x-" + name.toLowerCase().replace(/[^a-z]+/g, "-").replace(/-$/, ""), name, muscle, equip, kind }));
+  const id = (n: string) => "x-" + n.toLowerCase().replace(/[^a-z]+/g, "-").replace(/-$/, "");
+  S.gym.routines = [
+    { id: "r-push", name: "Push", items: [["Barbell bench press", 4, "6-8"], ["Seated dumbbell press", 3, "8-10"], ["Incline dumbbell press", 3, "8-12"], ["Lateral raise", 3, "12-15"], ["Triceps pushdown", 3, "10-12"]].map(([n, s, r]) => ({ ex: id(n as string), sets: s as number, reps: r as string })) },
+    { id: "r-pull", name: "Pull", items: [["Pull-up", 4, "6-10"], ["Barbell row", 3, "6-8"], ["Seated cable row", 3, "10-12"], ["Face pull", 3, "12-15"], ["Dumbbell curl", 3, "10-12"]].map(([n, s, r]) => ({ ex: id(n as string), sets: s as number, reps: r as string })) },
+    { id: "r-legs", name: "Legs", items: [["Back squat", 4, "5-8"], ["Romanian deadlift", 3, "8-10"], ["Bulgarian split squat", 3, "10"], ["Leg curl", 3, "12"], ["Standing calf raise", 4, "12-15"], ["Hanging leg raise", 3, "10-15"]].map(([n, s, r]) => ({ ex: id(n as string), sets: s as number, reps: r as string })) },
+  ];
+  return true;
+}
+export const e1rm = (w?: number | null, r?: number | null) => (w && r ? w * (1 + Math.min(r, 12) / 30) : 0);
+export const exById = (S: State, id: string) => S.gym.exercises.find((e) => e.id === id);
+/** Most recent finished workout that included this exercise (before `before` ISO). */
+export function lastFor(S: State, exId: string, before?: string) {
+  const ws = S.workouts.filter((w) => w.end && (!before || w.start < before) && w.ex.some((e) => e.ex === exId)).sort((a, b) => b.start.localeCompare(a.start));
+  const w = ws[0]; if (!w) return null;
+  return { w, sets: w.ex.find((e) => e.ex === exId)!.sets.filter((s) => s.done && !s.warm) };
+}
+export const volume = (w: Workout) => w.ex.reduce((n, e) => n + e.sets.reduce((m, s) => m + (s.done && !s.warm ? (s.w || 0) * (s.r || 0) : 0), 0), 0);
+export const doneSets = (w: Workout) => w.ex.reduce((n, e) => n + e.sets.filter((s) => s.done && !s.warm).length, 0);
