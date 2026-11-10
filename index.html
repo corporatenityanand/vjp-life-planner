@@ -46,7 +46,7 @@ h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:
 h1{font-size:1.6rem;font-weight:800}
 h2{font-size:1.1rem;font-weight:700}
 h3{font-size:.95rem;font-weight:700}
-.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 .toprow{display:flex;align-items:center;gap:12px;padding-block:10px 4px;flex-wrap:wrap}
 .brand{font-family:var(--f-display);font-weight:800;font-size:1.05rem;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
@@ -65,6 +65,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 main{padding-block:18px 60px}
 .grid{display:grid;gap:16px}
 .cols-2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+@media (min-width:1400px){.wrap{padding-left:32px;padding-right:32px}}
 .cols-3{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:var(--shadow);min-width:0}
 .card>h2,.card-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
