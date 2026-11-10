@@ -248,6 +248,48 @@ form[data-f="famAdd"] input[type=text]{flex:1 1 100%}
 .tile .v{font-family:var(--f-display);font-weight:800;font-size:1.6rem}
 .prow{display:grid;grid-template-columns:76px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:.86rem;padding:4px 0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:600;font-size:.88rem;z-index:20;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+
+/* Design pass: calmer list, phone-first header and bottom tab bar */
+h1{font-size:1.75rem}
+.card{border-radius:12px}
+.top3{border:2px solid var(--accent);background:linear-gradient(var(--warn-soft),var(--surface) 90px)}
+.top3 h2{font-size:1.25rem}
+.slot{background:var(--surface);border:1px solid var(--line)}
+.stext{font-size:1rem}
+.task{padding:12px 4px}
+.task .ttext{font-weight:500}
+.tmeta{gap:6px;margin-top:6px}
+.q.qbtn{border:0;background:none;padding:2px 0;cursor:pointer;color:var(--muted)}
+.q.qbtn:hover{color:var(--fg);text-decoration:underline}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.addrow input[type=text]{padding:9px 12px}
+.addrow .addp{grid-column:1/-1;justify-self:start}
+.scrollseg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+.scrollseg::-webkit-scrollbar{display:none}
+.scrollseg button{white-space:nowrap;flex:none}
+.show-sm{display:none}
+@media (max-width:640px){
+  body{font-size:15.5px}
+  .toprow{flex-wrap:nowrap;padding-block:8px}
+  .brand{font-size:.98rem;white-space:nowrap}
+  .sync{font-size:0;padding:6px}
+  .sync::before{width:10px;height:10px}
+  header.top nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+    display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;padding:0 4px env(safe-area-inset-bottom,0px)}
+  header.top nav.tabs a{padding:12px 0 13px;text-align:center;font-size:.72rem;border-bottom:0;border-top:3px solid transparent}
+  header.top nav.tabs a[aria-current="page"]{border-top-color:var(--accent);color:var(--accent-ink)}
+  main{padding-block:14px calc(90px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+  .pillars{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .pill{padding:8px 10px}
+  .pill .label{font-size:.62rem;letter-spacing:.05em}
+  .pill .n{font-size:1.05rem}
+  .hide-sm{display:none!important}
+  .show-sm{display:flex}
+  .card-h .small.muted{flex-basis:100%;order:3}
+  .addrow .addp{justify-self:stretch;display:grid;grid-template-columns:repeat(4,1fr)}
+  .addrow .addp button{padding:8px 4px}
+}
 </style>
 
 <header class="top">
@@ -434,8 +476,8 @@ function vToday(){
   if(overdue.length&&UI.carryDismissed!==d)h+=`<div class="banner warn" style="margin-bottom:14px"><span><b>${overdue.length} unfinished</b> from earlier days.</span><div class="spacer"></div>
     <button class="btn sm primary" data-a="carryAll">Bring to today</button><button class="btn sm" data-a="carryInbox">Move to Someday</button><button class="btn sm ghost" data-a="carryHide">Not now</button></div>`;
   h+=`<div class="pillars">${["fin","fit","fam"].map(p=>{const c=counts[p];const none=c.all===0;
-    return `<div class="pill ${p}"><div class="row"><span class="label">${PILLARS[p]}</span><div class="spacer"></div><span class="n num">${c.done}/${c.all}</span></div>
-    ${none?`<div class="small muted">Nothing for ${PILLARS[p]} ${isToday?"today":"on this day"}. Add one:</div><div class="add">${TEMPLATES[p].slice(0,3).map(x=>`<button class="chip out" data-a="tpl" data-p="${p}" data-t="${esc(x)}">+ ${esc(x)}</button>`).join("")}</div>`:
+    return `<div class="pill ${p}"><div class="row"><span class="label">${PILLARS[p]}</span><div class="spacer"></div><span class="n num">${c.done}/${c.all}</span></div>${none?`<div class="bar show-sm" style="margin-top:8px"></div>`:""}
+    ${none?`<div class="small muted hide-sm">Nothing for ${PILLARS[p]} ${isToday?"today":"on this day"}. Add one:</div><div class="add hide-sm">${TEMPLATES[p].slice(0,3).map(x=>`<button class="chip out" data-a="tpl" data-p="${p}" data-t="${esc(x)}">+ ${esc(x)}</button>`).join("")}</div>`:
     `<div class="bar" style="margin-top:8px"><span style="width:${c.all?c.done/c.all*100:0}%;background:var(--${p})"></span></div>`}</div>`}).join("")}</div>`;
   // top 3
   const allFin=top.length===3&&top.every(t=>t.p==="fin");
@@ -455,8 +497,8 @@ function vToday(){
    <section class="card"><div class="card-h"><h2>${isToday?"Today's list":"List"}</h2><span class="small muted num">${list.filter(t=>t.done).length} of ${list.length} done</span><div class="spacer"></div>
    <div class="seg"><button aria-pressed="${UI.listMode==="list"}" data-a="listMode" data-m="list">List</button><button aria-pressed="${UI.listMode==="matrix"}" data-a="listMode" data-m="matrix">Matrix</button></div></div>
    <form class="addrow" data-f="addTask"><input type="text" id="addTaskInput" placeholder="Add a task… (paste several lines to add many)" autocomplete="off">
-   <div class="seg">${["fin","fit","fam","oth"].map(p=>`<button type="button" class="p-${p}" aria-pressed="${UI.addPillar===p}" data-a="addPillar" data-p="${p}">${PILLARS[p]}</button>`).join("")}</div>
-   <button class="btn primary" type="submit">Add</button></form>
+   <button class="btn primary" type="submit">Add</button>
+   <div class="seg addp">${["fin","fit","fam","oth"].map(p=>`<button type="button" class="p-${p}" aria-pressed="${UI.addPillar===p}" data-a="addPillar" data-p="${p}">${PILLARS[p]}</button>`).join("")}</div></form>
    ${UI.listMode==="matrix"?vMatrix(list):vTaskList(list)}
    </section></div>`;
   const someday=S.tasks.filter(t=>!t.date&&!t.done);
@@ -474,9 +516,9 @@ function taskRow(t){
   return `<li class="task ${t.done?"done":""}"><button class="chk ${t.p} ${t.done?"on":""}" data-a="toggle" data-id="${t.id}" aria-label="Mark done">✓</button>
   <div style="min-width:0">${UI.editing===t.id?`<form data-f="editTask" data-id="${t.id}"><input type="text" id="edit-${t.id}" value="${esc(t.t)}" style="width:100%"></form>`:`<div class="ttext" data-a="edit" data-id="${t.id}">${esc(t.t)}</div>`}
    <div class="tmeta"><button class="chip ${t.p}" data-a="cyclePillar" data-id="${t.id}" title="Change pillar">${PILLARS[t.p]}${t.p==="fin"&&t.biz?" · "+esc(bizName(t.biz)):""}</button>
-   ${flag("u","Urgent","u")}${flag("i","Important","i")}
-   <button class="flag ${t.imp?"on i":"unset"}" data-a="impact" data-id="${t.id}" title="Impact if done">Impact ${t.imp?"●".repeat(t.imp)+"○".repeat(3-t.imp):"?"}</button>
-   ${q?`<span class="q">${QLABEL[q]}</span>`:""}${t.carried?`<span class="carried" title="Times moved forward">↠${t.carried}</span>`:""}${t.carried>=3&&!t.done?`<span class="small muted">Moved ${t.carried}×: break it down or drop it?</span>`:""}</div></div>
+   ${!rated(t)||UI.openMenu===t.id?`${flag("u","Urgent","u")}${flag("i","Important","i")}
+   <button class="flag ${t.imp?"on i":"unset"}" data-a="impact" data-id="${t.id}" title="Impact if done">Impact ${t.imp?"●".repeat(t.imp)+"○".repeat(3-t.imp):"?"}</button>`:""}
+   ${q?`<button class="q qbtn" data-a="menu" data-id="${t.id}" title="Change rating">${QLABEL[q]}${t.imp?` · ${"●".repeat(t.imp)}`:""}</button>`:""}${t.carried?`<span class="carried" title="Times moved forward">↠${t.carried}</span>`:""}${t.carried>=3&&!t.done?`<span class="small muted">Moved ${t.carried}×: break it down or drop it?</span>`:""}</div></div>
   <div class="tact"><button class="iconbtn star ${t.top?"on":""}" data-a="star" data-id="${t.id}" title="${t.top?"In Top 3":"Add to Top 3"}">${t.top?"★":"☆"}</button>
   <button class="iconbtn" data-a="focusTask" data-id="${t.id}" title="Focus on this">▶</button><button class="iconbtn" data-a="menu" data-id="${t.id}" title="More" aria-expanded="${UI.openMenu===t.id}">⋯</button></div>
   ${UI.openMenu===t.id?`<div class="menu"><button class="btn sm" data-a="moveTo" data-id="${t.id}" data-n="1">Tomorrow</button><button class="btn sm" data-a="moveTo" data-id="${t.id}" data-n="someday">Someday</button>
@@ -532,7 +574,7 @@ function vProjects(){
   if(wg.length||P.receivablesGoal)h+=`<details class="card" style="margin-bottom:14px"><summary><h2 style="display:inline">Goals this week by department</h2></summary><div class="grid cols-3" style="margin-top:10px">
    ${P.receivablesGoal?`<div><div class="label">Receivables</div><div>${esc(P.receivablesGoal)}</div></div>`:""}
    ${wg.map(([k,v])=>`<div><div class="label">${esc(k)}</div><ul class="items">${v.map((it,i)=>`<li class="item ${it.d?"done":""}"><button class="chk ${it.d?"on":""}" data-a="wgToggle" data-k="${esc(k)}" data-i="${i}">✓</button><span>${esc(it.t)}</span><span></span></li>`).join("")}</ul></div>`).join("")}</div></details>`;
-  h+=`<div class="toolbar"><div class="seg">${[...STATUS_GROUPS,["ALL","All"]].map(([k,l])=>`<button aria-pressed="${UI.projStatus===k}" data-a="projStatus" data-k="${k}">${l} <span class="num">${cnt(k)}</span></button>`).join("")}</div>
+  h+=`<div class="toolbar"><div class="seg scrollseg">${[...STATUS_GROUPS,["ALL","All"]].map(([k,l])=>`<button aria-pressed="${UI.projStatus===k}" data-a="projStatus" data-k="${k}">${l} <span class="num">${cnt(k)}</span></button>`).join("")}</div>
    <div class="seg"><button aria-pressed="${UI.projView==="sites"}" data-a="projView" data-k="sites">By site</button><button aria-pressed="${UI.projView==="depts"}" data-a="projView" data-k="depts">By department</button></div>
    <select data-c="projBiz" aria-label="Business"><option value="all">All businesses</option>${S.goals.biz.map(b=>`<option value="${b.id}" ${UI.projBiz===b.id?"selected":""}>${esc(b.short||b.name)}</option>`).join("")}</select></div>`;
   if(!P.sites.length)return h+`<div class="empty">No sites yet. Add one with “New site / project”.</div>`;
