@@ -291,6 +291,42 @@ h1{font-size:1.75rem}
   .addrow .addp{justify-self:stretch;display:grid;grid-template-columns:repeat(4,1fr)}
   .addrow .addp button{padding:8px 4px}
 }
+
+/* Company → project → department → week */
+.biztabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);margin-bottom:14px}
+.biztabs::-webkit-scrollbar{display:none}
+.biztabs button{border:0;background:none;padding:8px 14px 10px;font-weight:700;font-size:.95rem;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-family:var(--f-display)}
+.biztabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--fin)}
+.emptyd{display:flex;flex-wrap:wrap;gap:5px;align-items:center;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.emptyd .label{margin-right:4px}
+.item{grid-template-columns:20px minmax(0,1fr) auto}
+.item .ia{align-items:center;gap:4px}
+.qchip{border:1px solid transparent;border-radius:999px;font-size:.72rem;font-weight:700;padding:2px 8px;white-space:nowrap;cursor:pointer}
+.qchip.unq{border:1px dashed var(--line);background:transparent;color:var(--muted)}
+.qchip.q1,.qb.q1[aria-pressed="true"]{background:var(--bad-soft);color:var(--bad)}
+.qchip.q2,.qb.q2[aria-pressed="true"]{background:var(--warn-soft);color:var(--warn)}
+.qchip.q3,.qb.q3[aria-pressed="true"]{background:var(--fam-soft);color:var(--fam)}
+.qchip.q4,.qb.q4[aria-pressed="true"]{background:var(--oth-soft);color:var(--fg)}
+.mx .qchip{background:var(--surface);border:1px solid var(--line);color:var(--fg)}
+.plan{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:8px;background:var(--surface-2);margin:4px 0 6px}
+.planrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.planrow .label{width:56px}
+.qseg .qb{padding:5px 9px;font-size:.78rem}
+.qseg .qb span{font-weight:500}
+.daybtns{display:flex;flex-wrap:wrap;gap:4px}
+.db{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 8px;font-size:.78rem;font-weight:600;color:var(--muted)}
+.db.tod{border-color:var(--accent)}
+.db[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.matrix.wk{gap:12px}
+.matrix.wk .quad{background:var(--surface);border-width:1px;border-top:4px solid var(--line);padding:12px}
+.matrix.wk .quad.q1{border-top-color:var(--bad)} .matrix.wk .quad.q2{border-top-color:var(--warn)} .matrix.wk .quad.q3{border-top-color:var(--fam)} .matrix.wk .quad.q4{border-top-color:var(--oth)}
+.quad h3{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.mxl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.mx{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:8px;align-items:start;padding:7px 0;border-top:1px solid var(--line);font-size:.88rem}
+.mx:first-child{border-top:0}
+.mx .chk{width:18px;height:18px;font-size:11px;border-radius:5px}
+.mxb{min-width:0;overflow-wrap:anywhere}
+@media (max-width:640px){.planrow .label{width:auto;flex-basis:100%}}
 </style>
 
 <header class="top">
@@ -350,7 +386,7 @@ const BREAKS=["Stand up and drink a full glass of water.","10 push-ups or 20 squ
 
 /* ---------- state ---------- */
 function blank(){return{
-  settings:{work:25,short:5,long:15,every:4,sound:true},
+  settings:{work:25,short:5,long:15,every:4,sound:true,depts:null},
   projects:{sites:[],weekGoals:{},receivablesGoal:""},
   goals:{turnoverTarget:100,biz:[],fitness:{targetKg:72,targetLean:90,weekly:{strength:4,cardio:3,mobility:3,swim:1,surf:0,mma:1},skills:[]},
          family:{people:[],weddingTarget:3,weddingSaved:0,weddingSteps:[],villaBudget:0,villaSaved:0,villaSteps:[],outingEveryDays:30,checkupEveryDays:180,nextTrip:""}},
@@ -429,7 +465,7 @@ async function connect(){
 
 /* ---------- ui state ---------- */
 const UI={view:"today",day:todayStr(),week:weekStart(todayStr()),addPillar:"fin",listMode:"list",openMenu:null,editing:null,
-  swapFor:null,triage:null,projStatus:"ONGOING",projView:"sites",projBiz:"all",showDone:{},carryDismissed:null,
+  swapFor:null,triage:null,projStatus:"ONGOING",projView:"sites",projBiz:"all",weekMode:"matrix",plan:null,addTo:null,deptEdit:false,showDone:{},carryDismissed:null,
   relapseFor:null,urge:null,quitEdit:null,showHist:{},reviewWeek:weekStart(todayStr()),importText:null,exportText:null};
 let toastT;function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
 
@@ -440,6 +476,29 @@ const rated=t=>t.u!=null&&t.i!=null;
 const score=t=>(t.i?6:0)+(t.u?3:0)+(t.imp||1)*1.5;
 function quad(t){if(!rated(t))return null;return t.u&&t.i?1:t.i?2:t.u?3:4}
 const QLABEL={1:"Q1 · Do now",2:"Q2 · Protect time",3:"Q3 · Delegate",4:"Q4 · Drop / later"};
+const QSHORT={1:"Do now",2:"Plan",3:"Delegate",4:"Later"};
+const Q2UI={1:[true,true],2:[false,true],3:[true,false],4:[false,false]};
+/* projects ↔ week: a project item carries its own priority (it.q = 1..4). Scheduling it creates a linked task (t.ref) for that day. */
+const deptList=()=>(S.settings.depts&&S.settings.depts.length)?S.settings.depts:DEPTS;
+const siteLive=s=>{const st=(s.status||"").toUpperCase();return !st.startsWith("COMPLETE")&&!st.startsWith("CANCEL")};
+function itemById(sid,dept,iid){const s=S.projects.sites.find(x=>x.id===sid);return s&&(s.depts[dept]||[]).find(i=>i.id===iid)}
+function itemTask(it){return S.tasks.filter(t=>t.ref&&t.ref.item===it.id&&!t.done).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]}
+function setItemQ(it,q){if(q)it.q=q;else delete it.q;S.tasks.forEach(t=>{if(t.ref&&t.ref.item===it.id&&!t.done){if(q){[t.u,t.i]=Q2UI[q]}else{t.u=null;t.i=null}}})}
+function syncFromTask(t){if(!t||!t.ref)return;const it=itemById(t.ref.site,t.ref.dept,t.ref.item);if(!it)return;const q=quad(t);if(q)it.q=q}
+function scheduleItem(sid,dept,iid,date){const s=S.projects.sites.find(x=>x.id===sid);const it=itemById(sid,dept,iid);if(!it)return;
+  const lt=itemTask(it);
+  if(date===""){if(lt)S.tasks=S.tasks.filter(t=>t!==lt);return}
+  if(lt){if(lt.date!==date){lt.top=0;lt.date=date}return}
+  const [u,i]=it.q?Q2UI[it.q]:[null,null];
+  newTask(`${s.name} · ${dept}: ${it.t.split("\n")[0]}`,"fin",date,{biz:s.business||"NIL",ref:{site:s.id,dept,item:it.id},u,i,imp:null})}
+const shortDay=d=>`${DOW[parseYmd(d).getDay()]} ${parseYmd(d).getDate()}`;
+/* the inline "plan" panel: pick a quadrant and a day of the week */
+function planPanel(kind,attrs,q,date,ws){const days=[...Array(7)].map((_,i)=>addDays(ws,i));
+  return `<div class="plan"><div class="planrow"><span class="label">Priority</span><div class="seg qseg">${[1,2,3,4].map(n=>`<button class="qb q${n}" aria-pressed="${q===n}" data-a="pq" data-kind="${kind}" ${attrs} data-q="${q===n?0:n}" title="${QLABEL[n]}">Q${n} <span>${QSHORT[n]}</span></button>`).join("")}</div></div>
+  <div class="planrow"><span class="label">Day</span><div class="daybtns">${days.map(d=>`<button class="db ${d===todayStr()?"tod":""}" aria-pressed="${date===d}" data-a="pd" data-kind="${kind}" ${attrs} data-d="${date===d?"":d}">${shortDay(d)}</button>`).join("")}</div></div></div>`}
+function planChip(kind,attrs,id,q,date,empty){
+  const lab=[q?`Q${q} ${QSHORT[q]}`:"",date?shortDay(date):""].filter(Boolean).join(" · ")||empty||"Rate · plan";
+  return `<button class="qchip ${q?"q"+q:"unq"}" data-a="plan" data-id="${id}" title="Set priority and day" aria-expanded="${UI.plan===id}">${esc(lab)}</button>`}
 function newTask(text,pillar,date,extra){const t={id:uid(),t:text.trim(),p:pillar||"fin",date:date===undefined?UI.day:date,u:null,i:null,imp:null,top:0,done:false,carried:0,created:new Date().toISOString(),...extra};S.tasks.push(t);return t}
 function topOf(d){return tasksOn(d).filter(t=>t.top>0).sort((a,b)=>a.top-b.top)}
 function normalizeTop(d){topOf(d).forEach((t,i)=>t.top=i+1)}
@@ -548,8 +607,11 @@ function vWeek(){
   const ws=UI.week,days=[...Array(7)].map((_,i)=>addDays(ws,i));const wk=S.weeks[ws]||{focus:[]};
   const wt=S.tasks.filter(t=>t.date&&t.date>=ws&&t.date<=days[6]);
   const per={};PORDER.forEach(p=>per[p]=wt.filter(t=>t.p===p).length);const tot=wt.length||1;
-  let h=`<div class="dayhead"><h1>Week of ${fmtDay(ws)}<span class="sub">Same layout as your sheet: focus, the seven days, someday.</span></h1><div class="spacer"></div>
-   <button class="btn sm" data-a="week" data-n="-7">‹</button>${ws===weekStart(todayStr())?"":`<button class="btn sm" data-a="week" data-n="0">This week</button>`}<button class="btn sm" data-a="week" data-n="7">›</button></div>
+  let h=`<div class="dayhead"><h1>Week of ${fmtDay(ws)}<span class="sub">${UI.weekMode==="matrix"?"Everything you've prioritised, across companies. Tap a task's chip to give it a day.":"Your days. Open a day to set its Top 3 and focus."}</span></h1><div class="spacer"></div>
+   <div class="seg"><button aria-pressed="${UI.weekMode==="matrix"}" data-a="weekMode" data-m="matrix">Matrix</button><button aria-pressed="${UI.weekMode==="days"}" data-a="weekMode" data-m="days">Days</button></div>
+   <button class="btn sm" data-a="week" data-n="-7" aria-label="Previous week">‹</button>${ws===weekStart(todayStr())?"":`<button class="btn sm" data-a="week" data-n="0">This week</button>`}<button class="btn sm" data-a="week" data-n="7" aria-label="Next week">›</button></div>`;
+  if(UI.weekMode==="matrix")return h+vWeekMatrix(ws,days);
+  h+=`
    <div class="card" style="margin-bottom:14px"><div class="row" style="margin-bottom:8px"><span class="label">Balance this week</span><div class="spacer"></div><div class="legend">${PORDER.map(p=>`<span><i class="dot ${p}"></i>${PILLARS[p]} <b class="num">${per[p]}</b></span>`).join("")}</div></div>
    <div class="bar lg">${PORDER.map(p=>`<span style="width:${per[p]/tot*100}%;background:var(--${p})"></span>`).join("")}</div></div>
    <div class="weekscroll"><div class="weekgrid">`;
@@ -563,36 +625,67 @@ function vWeek(){
   h+=`<div class="wcol"><h3>Someday</h3>${sd.map(t=>`<div class="witem"><span class="dot ${t.p}" style="margin-top:6px"></span><span>${esc(t.t)}</span></div>`).join("")}<form data-f="dayAdd" data-d=""><input type="text" id="da-someday" placeholder="+ Add"></form></div>`;
   return h+`</div></div><p class="small muted">Tasks added here go to the ${PILLARS[UI.addPillar]} pillar (the one last picked on Today). Open a day to rate, star and focus.</p>`}
 
+function vWeekMatrix(ws,days){
+  const end=days[6];const rows={1:[],2:[],3:[],4:[]};let unrated=0;
+  S.projects.sites.filter(s=>siteLive(s)&&bizOk(s.business)).forEach(s=>Object.entries(s.depts).forEach(([dp,arr])=>arr.forEach(it=>{if(it.d||it.note)return;
+    if(!it.q){unrated++;return}const lt=itemTask(it);rows[it.q].push({kind:"it",s,dp,it,date:lt&&lt.date})})));
+  const loose=S.tasks.filter(t=>!t.done&&t.date&&t.date>=ws&&t.date<=end&&!(t.ref&&itemById(t.ref.site,t.ref.dept,t.ref.item))&&(UI.projBiz==="all"||(t.p==="fin"&&(t.biz||"NIL")===UI.projBiz)));
+  const looseUn=loose.filter(t=>!quad(t));loose.filter(t=>quad(t)).forEach(t=>rows[quad(t)].push({kind:"t",t,date:t.date}));
+  const ord=r=>r.date?(r.date<ws?"0"+r.date:r.date<=end?"1"+r.date:"3"+r.date):"2";
+  const entry=r=>{if(r.kind==="it"){const at=`data-s="${r.s.id}" data-k="${esc(r.dp)}" data-id="${r.it.id}"`;
+      return `<li class="mx"><button class="chk fin" data-a="itToggle" ${at} aria-label="Done">✓</button><div class="mxb"><div>${esc(r.it.t)}</div><div class="tiny muted">${esc(bizName(r.s.business||"NIL"))} · ${esc(r.s.name)} · ${esc(r.dp)}</div></div>
+      ${planChip("it",at,r.it.id,0,r.date,"+ Day")}${UI.plan===r.it.id?planPanel("it",at,r.it.q,r.date,ws):""}</li>`}
+    const t=r.t,at=`data-id="${t.id}"`;
+    return `<li class="mx"><button class="chk ${t.p}" data-a="toggle" ${at} aria-label="Done">✓</button><div class="mxb"><div>${esc(t.t)}</div><div class="tiny muted">${PILLARS[t.p]}${t.biz?" · "+esc(bizName(t.biz)):""}</div></div>
+      ${planChip("t",at,t.id,0,t.date,"+ Day")}${UI.plan===t.id?planPanel("t",at,quad(t),t.date,ws):""}</li>`};
+  const box=(n,title,sub)=>{const r=rows[n].sort((a,b)=>ord(a).localeCompare(ord(b)));const planned=r.filter(x=>x.date&&x.date>=ws&&x.date<=end).length;
+    return `<section class="quad q${n}"><h3>Q${n} · ${title} <span class="muted small">${sub}</span><span class="spacer"></span><span class="tiny muted num">${planned}/${r.length} this week</span></h3><ul class="mxl">${r.map(entry).join("")||`<li class="muted small">Nothing here.</li>`}</ul></section>`};
+  let h=bizTabs(S.projects.sites.filter(siteLive));
+  if(unrated||looseUn.length)h+=`<div class="banner info" style="margin-bottom:12px"><span>${unrated?`<b>${unrated}</b> project task${unrated>1?"s":""} not prioritised yet.`:""} ${looseUn.length?`<b>${looseUn.length}</b> task${looseUn.length>1?"s":""} this week without a rating.`:""}</span><div class="spacer"></div>${unrated?`<a class="btn sm" href="#projects">Prioritise in Projects</a>`:""}</div>`;
+  h+=`<div class="matrix wk">${box(1,"Do now","urgent + important")}${box(2,"Protect time","important, not urgent")}${box(3,"Delegate","urgent, not important")}${box(4,"Later","neither")}</div>`;
+  if(looseUn.length)h+=`<section class="quad" style="margin-top:12px"><h3>Not rated yet</h3><ul class="mxl">${looseUn.map(t=>entry({kind:"t",t,date:t.date})).join("")}</ul></section>`;
+  return h}
+
 /* ----- Projects ----- */
-function siteMatches(s){const st=(s.status||"").toUpperCase();
-  const g=UI.projStatus==="ALL"||st.startsWith(UI.projStatus)||(UI.projStatus==="ONGOING"&&!STATUS_GROUPS.some(([k])=>st.startsWith(k)));
-  return g&&(UI.projBiz==="all"||(s.business||"NIL")===UI.projBiz)}
+function siteMatchesStatus(s){const st=(s.status||"").toUpperCase();
+  return UI.projStatus==="ALL"||st.startsWith(UI.projStatus)||(UI.projStatus==="ONGOING"&&!STATUS_GROUPS.some(([k])=>st.startsWith(k)))}
+const bizOk=b=>UI.projBiz==="all"||(b||"NIL")===UI.projBiz;
+function siteMatches(s){return siteMatchesStatus(s)&&bizOk(s.business)}
+function bizTabs(sites){return `<div class="biztabs" role="tablist">${[["all","All companies"],...S.goals.biz.map(b=>[b.id,b.short||b.name])].map(([k,l])=>{const n=sites.filter(s=>k==="all"||(s.business||"NIL")===k).length;
+  return `<button role="tab" aria-selected="${UI.projBiz===k}" data-a="projBizSet" data-k="${k}">${esc(l)} <span class="num muted">${n}</span></button>`}).join("")}</div>`}
 function vProjects(){
   const P=S.projects,sites=P.sites.filter(siteMatches);
   const cnt=k=>P.sites.filter(s=>k==="ALL"||(s.status||"").toUpperCase().startsWith(k)||(k==="ONGOING"&&!STATUS_GROUPS.some(([x])=>(s.status||"").toUpperCase().startsWith(x)))).length;
-  let h=`<div class="dayhead"><h1>Projects<span class="sub">Your contracts tracker: one card per site, items by department.</span></h1><div class="spacer"></div><button class="btn primary sm" data-a="addSite">+ New site / project</button></div>`;
+  let h=`<div class="dayhead"><h1>Projects<span class="sub">Company → project → department. Rate each task, then plan it on the Week matrix.</span></h1><div class="spacer"></div><button class="btn sm" data-a="deptEdit">Departments</button><button class="btn primary sm" data-a="addSite">+ New project${UI.projBiz!=="all"?" in "+esc(bizName(UI.projBiz)):""}</button></div>
+  ${bizTabs(P.sites.filter(s=>UI.projStatus==="ALL"||siteMatchesStatus(s)))}
+  ${UI.deptEdit?`<section class="card" style="margin-bottom:14px"><div class="card-h"><h2>Departments</h2><span class="small muted">Shared by every company and project. Removing one here never deletes its tasks.</span><div class="spacer"></div><button class="btn sm ghost" data-a="deptEdit">Close</button></div>
+   <div class="row">${deptList().map((d,i)=>`<span class="chip out" style="padding-right:3px">${esc(d)}<button class="iconbtn" style="padding:2px 4px" data-a="deptRm" data-i="${i}" title="Remove from list">✕</button></span>`).join("")}
+   <form data-f="deptAdd" class="row"><input type="text" id="deptAddIn" placeholder="New department" style="width:180px"><button class="btn sm" type="submit">Add</button></form></div></section>`:""}`;
   const wg=Object.entries(P.weekGoals||{}).filter(([,v])=>v.length);
   if(wg.length||P.receivablesGoal)h+=`<details class="card" style="margin-bottom:14px"><summary><h2 style="display:inline">Goals this week by department</h2></summary><div class="grid cols-3" style="margin-top:10px">
    ${P.receivablesGoal?`<div><div class="label">Receivables</div><div>${esc(P.receivablesGoal)}</div></div>`:""}
    ${wg.map(([k,v])=>`<div><div class="label">${esc(k)}</div><ul class="items">${v.map((it,i)=>`<li class="item ${it.d?"done":""}"><button class="chk ${it.d?"on":""}" data-a="wgToggle" data-k="${esc(k)}" data-i="${i}">✓</button><span>${esc(it.t)}</span><span></span></li>`).join("")}</ul></div>`).join("")}</div></details>`;
   h+=`<div class="toolbar"><div class="seg scrollseg">${[...STATUS_GROUPS,["ALL","All"]].map(([k,l])=>`<button aria-pressed="${UI.projStatus===k}" data-a="projStatus" data-k="${k}">${l} <span class="num">${cnt(k)}</span></button>`).join("")}</div>
    <div class="seg"><button aria-pressed="${UI.projView==="sites"}" data-a="projView" data-k="sites">By site</button><button aria-pressed="${UI.projView==="depts"}" data-a="projView" data-k="depts">By department</button></div>
-   <select data-c="projBiz" aria-label="Business"><option value="all">All businesses</option>${S.goals.biz.map(b=>`<option value="${b.id}" ${UI.projBiz===b.id?"selected":""}>${esc(b.short||b.name)}</option>`).join("")}</select></div>`;
+</div>`;
   if(!P.sites.length)return h+`<div class="empty">No sites yet. Add one with “New site / project”.</div>`;
-  if(!sites.length)return h+`<div class="empty">No sites with this status.</div>`;
+  if(!sites.length)return h+`<div class="empty">No ${UI.projBiz!=="all"?esc(bizName(UI.projBiz))+" ":""}projects with this status. Add one with “New project”.</div>`;
   if(UI.projView==="depts"){
-    h+=`<div class="grid cols-3">${DEPTS.map(dp=>{const rows=[];sites.forEach(s=>(s.depts[dp]||[]).forEach(it=>{if(!it.d&&!it.note)rows.push([s,it])}));
+    h+=`<div class="grid cols-3">${deptList().map(dp=>{const rows=[];sites.forEach(s=>(s.depts[dp]||[]).forEach(it=>{if(!it.d&&!it.note)rows.push([s,it])}));
       if(!rows.length)return "";
       return `<section class="card"><h2>${dp} <span class="small muted num">${rows.length} open</span></h2><ul class="items">${rows.map(([s,it])=>itemRow(s,dp,it,true)).join("")}</ul></section>`}).join("")}</div>`;
     return h}
   return h+`<div class="sites">${sites.map(siteCard).join("")}</div>`}
 function itemRow(s,dp,it,showSite){
-  return `<li class="item ${it.d?"done":""} ${it.note?"note":""}">${it.note?`<span class="muted">–</span>`:`<button class="chk ${it.d?"on":""}" data-a="itToggle" data-s="${s.id}" data-k="${esc(dp)}" data-id="${it.id}" aria-label="Done">✓</button>`}
+  const at=`data-s="${s.id}" data-k="${esc(dp)}" data-id="${it.id}"`;const lt=!it.d&&!it.note?itemTask(it):null;
+  return `<li class="item ${it.d?"done":""} ${it.note?"note":""}">${it.note?`<span class="muted">–</span>`:`<button class="chk ${it.d?"on":""}" data-a="itToggle" ${at} aria-label="Done">✓</button>`}
   <span>${showSite?`<b>${esc(s.name)}</b> · `:""}${esc(it.t)}</span>
-  <span class="ia">${it.d||it.note?"":`<button class="iconbtn" data-a="itToday" data-s="${s.id}" data-k="${esc(dp)}" data-id="${it.id}" title="Add to today's list">→ Today</button>`}<button class="iconbtn" data-a="itDel" data-s="${s.id}" data-k="${esc(dp)}" data-id="${it.id}" title="Delete">✕</button></span></li>`}
+  <span class="ia">${it.d||it.note?"":planChip("it",at,it.id,it.q,lt&&lt.date)}<button class="iconbtn" data-a="itDel" ${at} title="Delete">✕</button></span>
+  ${UI.plan===it.id&&!it.d&&!it.note?planPanel("it",at,it.q,lt&&lt.date,weekStart(todayStr())):""}</li>`}
 function siteCard(s){
-  const depts=DEPTS.filter(d=>s.depts[d]&&s.depts[d].length).concat(Object.keys(s.depts).filter(d=>!DEPTS.includes(d)&&s.depts[d].length));
-  const open=depts.reduce((n,d)=>n+s.depts[d].filter(i=>!i.d&&!i.note).length,0);
+  const DL=deptList();const all=DL.concat(Object.keys(s.depts).filter(d=>!DL.includes(d)&&s.depts[d].length));
+  const depts=all.filter(d=>(s.depts[d]&&s.depts[d].length)||UI.addTo===s.id+"|"+d);const emptyD=all.filter(d=>!depts.includes(d));
+  const open=depts.reduce((n,d)=>n+(s.depts[d]||[]).filter(i=>!i.d&&!i.note).length,0);
   const sd=UI.showDone[s.id];
   return `<article class="card site"><div class="sh"><div style="min-width:0"><input class="inline" style="font-family:var(--f-display);font-weight:700;font-size:1.05rem;width:100%" value="${esc(s.name)}" data-c="siteField" data-s="${s.id}" data-k="name" id="sn-${s.id}" aria-label="Site name"></div><span class="chip ${open?"warn":"good"} num">${open} open</span></div>
   <div class="kv"><span class="label">Status</span><select data-c="siteField" data-s="${s.id}" data-k="status" id="ss-${s.id}">${STATUS_GROUPS.map(([k,l])=>`<option value="${k}" ${(s.status||"").toUpperCase().startsWith(k)?"selected":""}>${l}</option>`).join("")}</select>
@@ -600,11 +693,11 @@ function siteCard(s){
    <span class="label">Completion</span><input type="text" value="${esc(s.exp)}" data-c="siteField" data-s="${s.id}" data-k="exp" id="se-${s.id}">
    <span class="label">Receivables</span><input type="text" value="${esc(s.receivables)}" data-c="siteField" data-s="${s.id}" data-k="receivables" id="sr-${s.id}">
    <span class="label">Business</span><select data-c="siteField" data-s="${s.id}" data-k="business" id="sb-${s.id}">${S.goals.biz.map(b=>`<option value="${b.id}" ${(s.business||"NIL")===b.id?"selected":""}>${esc(b.short||b.name)}</option>`).join("")||`<option>NIL</option>`}</select></div>
-  ${depts.map(dp=>{const items=s.depts[dp].filter(i=>sd||!i.d);const dn=s.depts[dp].length-s.depts[dp].filter(i=>!i.d).length;
+  ${depts.map(dp=>{const arr=s.depts[dp]||[];const items=arr.filter(i=>sd||!i.d);const dn=arr.length-arr.filter(i=>!i.d).length;
     return `<div class="dept"><h4><span>${esc(dp)}</span>${dn&&!sd?`<span class="tiny">${dn} done</span>`:""}</h4><ul class="items">${items.map(it=>itemRow(s,dp,it,false)).join("")}</ul>
     <form class="miniadd" data-f="itAdd" data-s="${s.id}" data-k="${esc(dp)}"><input type="text" id="ia-${s.id}-${dp.replace(/\W/g,"")}" placeholder="+ ${esc(dp)} item"></form></div>`}).join("")}
-  <div class="row" style="margin-top:10px"><select data-c="addDept" data-s="${s.id}" aria-label="Add department"><option value="">+ Department…</option>${DEPTS.filter(d=>!depts.includes(d)).map(d=>`<option>${d}</option>`).join("")}</select>
-  <button class="btn sm ghost" data-a="showDone" data-s="${s.id}">${sd?"Hide done":"Show done"}</button><div class="spacer"></div><button class="btn sm ghost danger" data-a="delSite" data-s="${s.id}">Delete site</button></div>
+  ${emptyD.length?`<div class="emptyd"><span class="label">No tasks yet</span>${emptyD.map(d=>`<button class="chip out" data-a="addTo" data-s="${s.id}" data-k="${esc(d)}">+ ${esc(d)}</button>`).join("")}</div>`:""}
+  <div class="row" style="margin-top:10px"><button class="btn sm ghost" data-a="showDone" data-s="${s.id}">${sd?"Hide done":"Show done"}</button><div class="spacer"></div><button class="btn sm ghost danger" data-a="delSite" data-s="${s.id}">Delete site</button></div>
   ${UI.confirmDel===s.id?`<div class="banner warn" style="margin-top:8px"><span>Delete <b>${esc(s.name)}</b> and all its items?</span><div class="spacer"></div><button class="btn sm danger" data-a="delSiteYes" data-s="${s.id}">Delete</button><button class="btn sm" data-a="delSiteNo">Keep</button></div>`:""}</article>`}
 
 /* ----- Goals ----- */
@@ -844,7 +937,7 @@ const A={
   listMode(el){UI.listMode=el.dataset.m;render()},
   toggle(el){const t=findTask(el.dataset.id);if(!t)return;setDone(t,!t.done);if(t.done){const tp=topOf(t.date);if(t.top&&tp.length===3&&tp.every(x=>x.done))toast("Top 3 done. The day already counts.");}commit()},
   edit(el){UI.editing=el.dataset.id;render();const i=$("#edit-"+el.dataset.id);i&&i.focus()},
-  flag(el){const t=findTask(el.dataset.id);const k=el.dataset.k;t[k]=t[k]==null?true:t[k]?false:null;commit()},
+  flag(el){const t=findTask(el.dataset.id);const k=el.dataset.k;t[k]=t[k]==null?true:t[k]?false:null;syncFromTask(t);commit()},
   impact(el){const t=findTask(el.dataset.id);t.imp=t.imp?(t.imp%3)+1:2;commit()},
   cyclePillar(el){const t=findTask(el.dataset.id);t.p=PORDER[(PORDER.indexOf(t.p)+1)%4];commit()},
   menu(el){UI.openMenu=UI.openMenu===el.dataset.id?null:el.dataset.id;render()},
@@ -859,9 +952,9 @@ const A={
   suggest(){const un=tasksOn(UI.day).filter(t=>!t.done&&!rated(t));if(un.length){A.triageStart();return}suggestTop3(UI.day);commit();toast("Top 3 suggested. Swap anything that feels wrong.")},
   triageStart(){const ids=tasksOn(UI.day).filter(t=>!t.done&&!rated(t)).map(t=>t.id);if(!ids.length){suggestTop3(UI.day);commit();return}UI.triage={ids,i:0};render()},
   triageEnd(){UI.triage=null;render()},
-  tri(el){const t=findTask(UI.triage.ids[UI.triage.i]);const k=el.dataset.k,v=el.dataset.v;t[k]=k==="p"?v:k==="imp"?+v:v==="1";commit()},
+  tri(el){const t=findTask(UI.triage.ids[UI.triage.i]);const k=el.dataset.k,v=el.dataset.v;t[k]=k==="p"?v:k==="imp"?+v:v==="1";syncFromTask(t);commit()},
   triNext(el){const n=+el.dataset.n;const t=findTask(UI.triage.ids[UI.triage.i]);
-    if(n>0&&t){if(t.u==null)t.u=false;if(t.i==null)t.i=false;if(!t.imp)t.imp=1}
+    if(n>0&&t){if(t.u==null)t.u=false;if(t.i==null)t.i=false;if(!t.imp)t.imp=1;syncFromTask(t)}
     UI.triage.i+=n;if(UI.triage.i>=UI.triage.ids.length){UI.triage=null;suggestTop3(UI.day);toast("Rated. Here's a suggested Top 3.")}commit()},
   focusTask(el){TM.taskId=el.dataset.id;if(TM.mode!=="work"&&!TM.running){TM.mode="work";TM.left=null}saveTM();location.hash="focus"},
   week(el){const n=+el.dataset.n;UI.week=n===0?weekStart(todayStr()):addDays(UI.week,n);render()},
@@ -869,8 +962,16 @@ const A={
   wfToggle(el){const w=S.weeks[UI.week];w.focus[+el.dataset.i].d=!w.focus[+el.dataset.i].d;commit()},
   wfDel(el){S.weeks[UI.week].focus.splice(+el.dataset.i,1);commit()},
   projStatus(el){UI.projStatus=el.dataset.k;render()},
+  projBizSet(el){UI.projBiz=el.dataset.k;UI.plan=null;render()},
+  weekMode(el){UI.weekMode=el.dataset.m;UI.plan=null;render()},
+  plan(el){UI.plan=UI.plan===el.dataset.id?null:el.dataset.id;render()},
+  pq(el){const q=+el.dataset.q;if(el.dataset.kind==="it"){const it=findItem(el);if(it)setItemQ(it,q)}else{const t=findTask(el.dataset.id);if(t){if(q){[t.u,t.i]=Q2UI[q]}else{t.u=null;t.i=null}syncFromTask(t)}}commit()},
+  pd(el){const d=el.dataset.d;if(el.dataset.kind==="it")scheduleItem(el.dataset.s,el.dataset.k,el.dataset.id,d);else{const t=findTask(el.dataset.id);if(t){t.date=d||null;t.top=0}}commit();if(d)toast("Planned for "+fmtDay(d)+".")},
+  addTo(el){UI.addTo=el.dataset.s+"|"+el.dataset.k;render();const i=document.getElementById("ia-"+el.dataset.s+"-"+el.dataset.k.replace(/\W/g,""));i&&i.focus()},
+  deptEdit(){UI.deptEdit=!UI.deptEdit;render()},
+  deptRm(el){const L=[...deptList()];L.splice(+el.dataset.i,1);S.settings.depts=L;commit()},
   projView(el){UI.projView=el.dataset.k;render()},
-  addSite(){const s={id:"s"+uid(),name:"New site",business:UI.projBiz!=="all"?UI.projBiz:"NIL",jobType:"",status:"ONGOING",exp:"",receivables:"",depts:{Contracts:[],Operations:[],Billing:[]}};S.projects.sites.unshift(s);UI.projStatus="ONGOING";commit();setTimeout(()=>{const i=$("#sn-"+s.id);i&&(i.focus(),i.select())},30)},
+  addSite(){const s={id:"s"+uid(),name:"New site",business:UI.projBiz!=="all"?UI.projBiz:"NIL",jobType:"",status:"ONGOING",exp:"",receivables:"",depts:{}};S.projects.sites.unshift(s);UI.projStatus="ONGOING";commit();setTimeout(()=>{const i=$("#sn-"+s.id);i&&(i.focus(),i.select())},30)},
   delSite(el){UI.confirmDel=el.dataset.s;render()},
   delSiteNo(){UI.confirmDel=null;render()},
   delSiteYes(el){S.projects.sites=S.projects.sites.filter(s=>s.id!==el.dataset.s);UI.confirmDel=null;commit()},
@@ -915,7 +1016,8 @@ const F={
   editTask(f){const t=findTask(f.dataset.id);const v=$("#edit-"+t.id).value.trim();if(v)t.t=v;UI.editing=null;commit()},
   wfAdd(){const v=$("#wfAdd").value.trim();if(!v)return;const w=S.weeks[UI.week]=S.weeks[UI.week]||{focus:[]};(w.focus=w.focus||[]).push({t:v,p:UI.addPillar,d:false});commit();$("#wfAdd").focus()},
   dayAdd(f){const d=f.dataset.d||null;const inp=f.querySelector("input");const v=inp.value.trim();if(!v)return;newTask(v,UI.addPillar,d);const id=inp.id;commit();const n=document.getElementById(id);n&&n.focus()},
-  itAdd(f){const s=S.projects.sites.find(x=>x.id===f.dataset.s);const inp=f.querySelector("input");const v=inp.value.trim();if(!v)return;(s.depts[f.dataset.k]=s.depts[f.dataset.k]||[]).push({id:uid(),t:v,d:false});const id=inp.id;commit();const n=document.getElementById(id);n&&n.focus()},
+  deptAdd(){const v=$("#deptAddIn").value.trim();if(!v)return;const L=[...deptList()];if(!L.includes(v))L.push(v);S.settings.depts=L;commit();const i=$("#deptAddIn");i&&i.focus()},
+  itAdd(f){UI.addTo=null;const s=S.projects.sites.find(x=>x.id===f.dataset.s);const inp=f.querySelector("input");const v=inp.value.trim();if(!v)return;(s.depts[f.dataset.k]=s.depts[f.dataset.k]||[]).push({id:uid(),t:v,d:false});const id=inp.id;commit();const n=document.getElementById(id);n&&n.focus()},
   clAdd(f){const arr=getPath(f.dataset.path);const inp=f.querySelector("input");const v=inp.value.trim();if(!v||!arr)return;arr.push({t:v,d:false});const id=inp.id;commit();const n=document.getElementById(id);n&&n.focus()},
   bodyAdd(){const kg=+$("#bkg").value,lean=+$("#blean").value;if(!kg)return toast("Enter your weight in kg.");S.fitlog.body=S.fitlog.body.filter(b=>b.date!==$("#bd").value);S.fitlog.body.push({id:uid(),date:$("#bd").value||todayStr(),kg,lean:lean||null});commit();toast("Logged.")},
   famAdd(f){const type=f.dataset.type;const note=f.querySelector("input[type=text]").value.trim();const date=f.querySelector("input[type=date]").value||todayStr();S.famlog.events.push({id:uid(),type,date,note});commit();toast(type==="date"?"Date logged.":"Outing logged.")},
@@ -961,7 +1063,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){UI.editing=null;UI.
   if(e.key==="n"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)&&UI.view==="today"){e.preventDefault();$("#addTaskInput").focus()}});
 document.addEventListener("paste",e=>{if(e.target.id!=="addTaskInput")return;const txt=(e.clipboardData||window.clipboardData).getData("text");if(txt&&txt.includes("\n")){e.preventDefault();e.target.value=txt;F.addTask()}});
 $("#importFile").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.docs)throw 0;UI.importText={name:f.name,docs:j.docs};render()}catch(x){toast("That file isn't a planner backup.")}};r.readAsText(f);e.target.value=""});
-function route(){const h=location.hash.slice(1);UI.view=["today","week","projects","goals","focus","quit","review"].includes(h)?h:"today";UI.openMenu=null;UI.editing=null;render();window.scrollTo(0,0)}
+function route(){const h=location.hash.slice(1);UI.view=["today","week","projects","goals","focus","quit","review"].includes(h)?h:"week";UI.openMenu=null;UI.plan=null;UI.editing=null;render();window.scrollTo(0,0)}
 window.addEventListener("hashchange",route);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(UI.day<todayStr()&&UI.view==="today")UI.day=todayStr();tickAll();if(TM.running&&TM.mode==="work")grabWake()}});
 
