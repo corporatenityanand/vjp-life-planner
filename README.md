@@ -24,3 +24,17 @@ After you edit `Code.gs`, go to Deploy → Manage deployments → edit (pencil i
 ## Data format
 
 Tab `Store`: one row per record. The columns are `key`, `updated` and the JSON, which is split across columns C onward when it's long. Records: `settings`, `projects`, `goals`, `vices`, `weeks`, `fitlog`, `famlog`, `tasks-YYYY-MM`, `tasks-someday`, `focus-YYYY-MM`.
+
+
+## Version 2 (React + shadcn/ui)
+
+The site at the repo root is now built from `app/` (Vite, React, Tailwind, shadcn/ui components in `app/src/components/ui`).
+It uses the same Google Sheet and Apps Script as v1, so nothing changes on the Sheet side.
+
+- Develop: `cd app && npm install && npm run dev`
+- Publish: `cd app && npm run deploy` (type-checks, builds, copies `index.html` + `assets/` to the repo root), then commit and push.
+- v1 is kept at `legacy.html` for Fitness and Family until those are rebuilt.
+
+Data model added in v2: `work` (companies, functions, goals per year/month/week, sales orders), `net` (networking meetings);
+tasks gain `company`, `fn`, `order`, `week`. On first load v2 moves the v1 `projects` sites into sales orders and their open items into tasks
+(the `projects` record is left untouched as a backup).

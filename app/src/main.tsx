@@ -1,0 +1,10 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App";
+import { beaconSave, connect, loadLocal } from "./lib/store";
+loadLocal();
+window.addEventListener("pagehide", beaconSave);
+document.addEventListener("visibilitychange", () => { if (document.hidden) beaconSave(); });
+ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);
+connect();

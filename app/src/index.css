@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  :root {
+    --background: 220 14% 97%; --foreground: 222 22% 10%;
+    --card: 0 0% 100%; --card-foreground: 222 22% 10%;
+    --popover: 0 0% 100%; --popover-foreground: 222 22% 10%;
+    --primary: 222 22% 12%; --primary-foreground: 0 0% 98%;
+    --secondary: 220 14% 93%; --secondary-foreground: 222 22% 12%;
+    --muted: 220 14% 93%; --muted-foreground: 220 9% 42%;
+    --accent: 220 14% 92%; --accent-foreground: 222 22% 12%;
+    --destructive: 0 72% 50%; --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 88%; --input: 220 13% 86%; --ring: 222 22% 30%;
+    --radius: 0.6rem;
+    --brand: 36 100% 46%;
+    --fin: 162 83% 30%; --fit: 9 66% 50%; --fam: 262 58% 55%; --oth: 220 9% 46%;
+    --q1: 0 72% 50%; --q2: 36 100% 40%; --q3: 262 58% 55%; --q4: 220 9% 50%;
+  }
+  .dark {
+    --background: 220 18% 6%; --foreground: 210 20% 94%;
+    --card: 220 16% 9%; --card-foreground: 210 20% 94%;
+    --popover: 220 16% 10%; --popover-foreground: 210 20% 94%;
+    --primary: 210 20% 94%; --primary-foreground: 222 22% 10%;
+    --secondary: 220 14% 15%; --secondary-foreground: 210 20% 94%;
+    --muted: 220 14% 14%; --muted-foreground: 218 11% 62%;
+    --accent: 220 14% 16%; --accent-foreground: 210 20% 94%;
+    --destructive: 0 70% 58%; --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 18%; --input: 220 13% 20%; --ring: 210 20% 70%;
+    --brand: 38 92% 55%;
+    --fin: 162 56% 50%; --fit: 11 100% 69%; --fam: 256 100% 77%; --oth: 218 11% 62%;
+    --q1: 0 90% 68%; --q2: 38 92% 58%; --q3: 256 100% 77%; --q4: 218 11% 62%;
+  }
+  * { @apply border-border; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-background text-foreground antialiased; font-feature-settings: "cv11", "ss01"; }
+  .num { font-variant-numeric: tabular-nums; }
+}
