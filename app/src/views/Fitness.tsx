@@ -15,8 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, PageHead, Stat } from "@/components/bits";
-import { ExDetailHost, LibraryTab, openExDetail, useLibSearch } from "./ExLibrary";
-import { ensureFromLib, imgUrl } from "@/lib/exlib";
+import { ExDetailHost, LibraryTab, openExDetail } from "./ExLibrary";
+import { WorkoutBuilder, BItem } from "./Builder";
 import { BookOpen, Info, Check, ChevronDown, ChevronUp, Dumbbell, MoreHorizontal, Pencil, Play, Plus, Search, Timer, Trash2, Trophy, X } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, ReferenceLine } from "recharts";
 
@@ -44,48 +44,6 @@ function RestBar() {
 }
 
 /* ---------- exercise picker ---------- */
-function ExercisePicker({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (id: string) => void }) {
-  useStore();
-  const [q, setQ] = React.useState(""); const [m, setM] = React.useState("All");
-  const [creating, setCreating] = React.useState(false); const [nx, setNx] = React.useState<{ name: string; muscle: string; kind: Exercise["kind"]; equip: string }>({ name: "", muscle: "Chest", kind: "weight", equip: "" });
-  React.useEffect(() => { if (open) { setQ(""); setCreating(false); } }, [open]);
-  const counts: Record<string, number> = {}; S.workouts.forEach((w) => w.ex.forEach((e) => (counts[e.ex] = (counts[e.ex] || 0) + 1)));
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const libHits = useLibSearch(q, m);
-  const list = S.gym.exercises.filter((e) => (m === "All" || e.muscle === m) && words.every((w) => e.name.toLowerCase().includes(w))).sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0) || a.name.localeCompare(b.name));
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Add exercise</DialogTitle></DialogHeader>
-        {!creating ? <>
-          <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search exercises" className="pl-9" /></div>
-          <div className="flex flex-wrap gap-1">{["All", ...MUSCLES].map((x) => <button key={x} onClick={() => setM(x)} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m === x ? "border-foreground bg-foreground text-background" : "text-muted-foreground")}>{x}</button>)}</div>
-          <div className="max-h-[45dvh] divide-y overflow-y-auto rounded-md border">
-            <div className="sticky top-0 z-10 bg-muted/95 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">Your exercises</div>
-            {list.map((e) => <div key={e.id} className="flex items-center hover:bg-accent"><button onClick={() => { onPick(e.id); onClose(); }} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"><Dumbbell className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{e.name}</div><div className="text-xs text-muted-foreground">{e.muscle}{e.equip ? ` · ${e.equip}` : ""}</div></div>{counts[e.id] ? <span className="text-xs text-muted-foreground num">{counts[e.id]}×</span> : null}</button>
-              {e.lib && <Button variant="ghost" size="icon-sm" className="mr-2" aria-label={`How to do ${e.name}`} onClick={() => openExDetail(e.lib!)}><Info /></Button>}</div>)}
-            {!list.length && <div className="p-3 text-sm text-muted-foreground">None of yours match.</div>}
-            <div className="sticky top-0 z-10 bg-muted/95 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">From the library</div>
-            {libHits == null ? <div className="p-3 text-sm text-muted-foreground">Loading…</div> : !libHits.length ? <div className="p-3 text-sm text-muted-foreground">{words.length || m !== "All" ? "No library match." : "Type or pick a muscle to search 876 more."}</div>
-              : libHits.map((x) => <div key={x.id} className="flex items-center hover:bg-accent"><button onClick={() => { let id = ""; update((S) => { id = ensureFromLib(S, x); }); onPick(id); onClose(); }} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left">
-                {x.im.length ? <img loading="lazy" src={imgUrl(x)} alt="" className="h-9 w-12 shrink-0 rounded bg-white object-contain" /> : <Dumbbell className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                <div className="min-w-0 flex-1"><div className="text-sm font-medium">{x.n}</div><div className="truncate text-xs text-muted-foreground">{x.p.join(", ")} · {x.e}{x.c === "stretching" ? " · stretch" : ""}</div></div></button>
-                <Button variant="ghost" size="icon-sm" className="mr-2" aria-label={`How to do ${x.n}`} onClick={() => openExDetail(x.id)}><Info /></Button></div>)}
-          </div>
-          <Button variant="outline" onClick={() => { setCreating(true); setNx({ ...nx, name: q }); }}><Plus />Create “{q || "new exercise"}”</Button>
-        </> : <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); if (!nx.name.trim()) return; const id = "x-" + uid(); update((S) => S.gym.exercises.push({ id, name: nx.name.trim(), muscle: nx.muscle, equip: nx.equip, kind: nx.kind, custom: true })); onPick(id); onClose(); }}>
-          <div className="space-y-1.5"><Label>Name</Label><Input autoFocus value={nx.name} onChange={(e) => setNx({ ...nx, name: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Muscle group</Label><Select value={nx.muscle} onValueChange={(v) => setNx({ ...nx, muscle: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{MUSCLES.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-1.5"><Label>Tracked as</Label><Select value={nx.kind} onValueChange={(v) => setNx({ ...nx, kind: v as any })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weight">Weight × reps</SelectItem><SelectItem value="bw">Reps (bodyweight, + optional kg)</SelectItem><SelectItem value="time">Seconds</SelectItem></SelectContent></Select></div>
-          </div>
-          <div className="space-y-1.5"><Label>Equipment (optional)</Label><Input value={nx.equip} onChange={(e) => setNx({ ...nx, equip: e.target.value })} placeholder="Barbell, cable, machine…" /></div>
-          <DialogFooter><Button type="button" variant="ghost" onClick={() => setCreating(false)}>Back</Button><Button type="submit" variant="brand">Create and add</Button></DialogFooter>
-        </form>}
-      </DialogContent>
-    </Dialog>);
-}
-
 /* ---------- live workout ---------- */
 function ExerciseBlock({ w, e, idx }: { w: Workout; e: WEx; idx: number }) {
   const x = exById(S, e.ex); const last = lastFor(S, e.ex, w.start);
@@ -155,7 +113,8 @@ function ActiveWorkout({ w }: { w: Workout }) {
       {!w.ex.length && <Empty>Add your first exercise.</Empty>}
       <Button variant="outline" className="w-full" size="lg" onClick={() => setPick(true)}><Plus />Add exercise</Button>
       <div className="flex items-center justify-center gap-2 pb-4 text-sm text-muted-foreground">Rest timer<Select value={String(S.gym.rest || 90)} onValueChange={(v) => update((S) => (S.gym.rest = +v))}><SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger><SelectContent>{[45, 60, 90, 120, 150, 180, 240].map((s) => <SelectItem key={s} value={String(s)}>{clock(s * 1000)}</SelectItem>)}</SelectContent></Select></div>
-      <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={(id) => update(() => { const last = lastFor(S, id); w.ex.push({ id: uid(), ex: id, sets: Array.from({ length: Math.max(3, last?.sets.length || 0) }, () => ({})) }); })} />
+      <WorkoutBuilder open={pick} onClose={() => setPick(false)} title="Add exercises" existing={w.ex.map((e) => ({ ex: e.ex, sets: e.sets.length }))}
+        actions={[{ label: "Add to workout", brand: true, fn: (items) => update(() => items.forEach((it) => w.ex.push({ id: uid(), ex: it.ex, target: `${it.sets}×${it.reps}`, sets: Array.from({ length: it.sets }, () => ({})) }))) }]} />
     </div>);
 }
 
@@ -196,14 +155,15 @@ function RoutineEditor({ r, onClose }: { r: Routine | null; onClose: () => void 
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button variant="brand" onClick={() => { if (!d.name.trim()) return toast("Give the routine a name."); update((S) => { const i = S.gym.routines.findIndex((x) => x.id === d.id); if (i >= 0) S.gym.routines[i] = d; else S.gym.routines.push(d); }); onClose(); }}>Save routine</Button>
         </DialogFooter>
-        <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={(id) => setD((x) => x && { ...x, items: [...x.items, { ex: id, sets: 3, reps: "8-12" }] })} />
+        <WorkoutBuilder open={pick} onClose={() => setPick(false)} title={`Add to ${d.name || "routine"}`} existing={d.items}
+          actions={[{ label: "Add to routine", brand: true, fn: (items) => setD((x) => x && { ...x, items: [...x.items, ...items] }) }]} />
       </DialogContent>
     </Dialog>);
 }
 
 function WorkoutHome() {
   useStore();
-  const [edit, setEdit] = React.useState<Routine | null>(null);
+  const [edit, setEdit] = React.useState<Routine | null>(null); const [build, setBuild] = React.useState(false);
   const ws = weekStart(todayStr()), we = addDays(ws, 6);
   const week = S.workouts.filter((w) => w.end && w.start.slice(0, 10) >= ws && w.start.slice(0, 10) <= we);
   const target = +(S.goals.fitness?.weekly?.strength || 4);
@@ -216,7 +176,10 @@ function WorkoutHome() {
         <Stat label="Volume this week" value={`${Math.round(week.reduce((n, w) => n + volume(w), 0)).toLocaleString("en-IN")} kg`} />
         <Stat label="All-time workouts" value={S.workouts.filter((w) => w.end).length} />
       </div>
-      <Button size="lg" variant="brand" className="w-full sm:w-auto" onClick={() => startWorkout()}><Play />Start an empty workout</Button>
+      <div className="flex flex-col gap-2 sm:flex-row"><Button size="lg" variant="brand" onClick={() => setBuild(true)}><Plus />Build a workout</Button><Button size="lg" variant="outline" onClick={() => startWorkout()}><Play />Start an empty workout</Button></div>
+      <WorkoutBuilder open={build} onClose={() => setBuild(false)} title="Build a workout" askName defaultName={`Workout ${fmtDay(todayStr())}`}
+        actions={[{ label: "Save as routine", fn: (items, name) => { update((S) => S.gym.routines.push({ id: "r-" + uid(), name, items })); toast(`Saved routine “${name}”.`); } },
+          { label: "Start workout", brand: true, fn: (items, name) => startWorkout({ id: "", name, items }) }]} />
       <div className="flex items-center"><h2 className="mr-auto text-lg font-semibold">Routines</h2><Button variant="outline" size="sm" onClick={() => setEdit({ id: "r-" + uid(), name: "", items: [] })}><Plus />New routine</Button></div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {S.gym.routines.map((r) => { const l = lastOf(r); return (

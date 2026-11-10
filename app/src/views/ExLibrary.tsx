@@ -15,7 +15,9 @@ import { Dumbbell, ExternalLink, ListPlus, Pause, Play, Plus, Search, Youtube } 
 
 /* ---------- open the detail sheet from anywhere ---------- */
 let OPEN: string | null = null; const subs = new Set<() => void>();
-export const openExDetail = (libId: string) => { OPEN = libId; subs.forEach((f) => f()); };
+let ONADD: null | { label: string; fn: () => void } = null;
+/** Opens the how-to sheet. Pass `add` to replace its actions with one button (used by the workout builder). */
+export const openExDetail = (libId: string, add?: { label: string; fn: () => void }) => { OPEN = libId; ONADD = add || null; subs.forEach((f) => f()); };
 const useOpen = () => React.useSyncExternalStore((f) => (subs.add(f), () => subs.delete(f)), () => OPEN);
 
 /** Adds an exercise to the live workout. Returns false when no workout is running. */
@@ -92,13 +94,13 @@ export function ExDetailHost() {
           <div><div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">How to do it</div>
             <ol className="space-y-2 text-sm leading-relaxed">{x.i.map((t, k) => <li key={k} className="flex gap-2.5"><span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-semibold num">{k + 1}</span><span>{t}</span></li>)}</ol></div>
           <div className="sticky -bottom-5 -mx-5 -mb-5 flex flex-wrap gap-2 border-t bg-background/95 px-5 py-3 backdrop-blur">
-            {S.gym.active ? <Button variant="brand" onClick={() => { addToWorkout(ensure()); toast(`Added ${x.n} to your workout.`); close(); }}><Plus />Add to workout</Button>
+            {ONADD ? <Button variant="brand" onClick={() => { ONADD!.fn(); close(); }}><Plus />{ONADD.label}</Button> : <>{S.gym.active ? <Button variant="brand" onClick={() => { addToWorkout(ensure()); toast(`Added ${x.n} to your workout.`); close(); }}><Plus />Add to workout</Button>
               : <Button variant="brand" onClick={() => { const eid = ensure(); update((S) => { S.gym.active = { id: "w-" + uid(), start: new Date().toISOString(), name: `Workout ${fmtDay(todayStr())}`, routine: null, ex: [] }; }); addToWorkout(eid); close(); try { localStorage.setItem("lp2-fittab", "workout"); } catch {} window.dispatchEvent(new Event("lp-fittab")); }}><Play />Start a workout with this</Button>}
             <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline"><ListPlus />Add to routine</Button></DropdownMenuTrigger>
               <DropdownMenuContent align="start"><DropdownMenuLabel>Add to…</DropdownMenuLabel><DropdownMenuSeparator />
                 {S.gym.routines.map((r) => <DropdownMenuItem key={r.id} onSelect={() => { const eid = ensure(); addToRoutine(r, eid, S.gym.exercises.find((e) => e.id === eid)?.kind); toast(`Added to ${r.name}.`); }}>{r.name}</DropdownMenuItem>)}
                 {!S.gym.routines.length && <DropdownMenuItem disabled>No routines yet</DropdownMenuItem>}
-              </DropdownMenuContent></DropdownMenu>
+              </DropdownMenuContent></DropdownMenu></>}
           </div>
         </>}
       </DialogContent>
