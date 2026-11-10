@@ -32,12 +32,12 @@ export type State = {
   gym: Gym;
   tasks: Task[]; focus: Focus[]; workouts: Workout[];
 };
-export type Exercise = { id: string; name: string; muscle: string; equip?: string; kind: "weight" | "bw" | "time"; custom?: boolean };
+export type Exercise = { id: string; name: string; muscle: string; equip?: string; kind: "weight" | "bw" | "time"; custom?: boolean; lib?: string };
 export type WSet = { w?: number | null; r?: number | null; done?: boolean; warm?: boolean };
 export type WEx = { id: string; ex: string; sets: WSet[]; note?: string; target?: string };
 export type Workout = { id: string; start: string; end?: string | null; name: string; routine?: string | null; ex: WEx[]; notes?: string };
 export type Routine = { id: string; name: string; items: { ex: string; sets: number; reps: string }[]; note?: string };
-export type Gym = { exercises: Exercise[]; routines: Routine[]; active: Workout | null; rest: number; photos?: any[] };
+export type Gym = { exercises: Exercise[]; routines: Routine[]; active: Workout | null; rest: number; photos?: any[]; vids?: Record<string, string> };
 export function blank(): State {
   return {
     settings: { work: 25, short: 5, long: 15, every: 4, sound: true, netPerWeek: 3 },
@@ -138,8 +138,22 @@ const EX: [string, string, string, Exercise["kind"]][] = [
   ["Kettlebell swing", "Full body", "Kettlebell", "weight"], ["Farmer's carry", "Full body", "Dumbbell", "weight"], ["Burpee", "Full body", "Bodyweight", "bw"],
 ];
 export const MUSCLES = ["Chest", "Back", "Shoulders", "Legs", "Arms", "Core", "Full body"];
+/** Our starter exercises → entries in the bundled exercise library (free-exercise-db). */
+const LIBMAP: Record<string, string> = {
+  "Barbell bench press": "Barbell_Bench_Press_-_Medium_Grip", "Incline dumbbell press": "Incline_Dumbbell_Press", "Dumbbell bench press": "Dumbbell_Bench_Press", "Cable fly": "Cable_Crossover", "Push-up": "Pushups", "Chest dip": "Dips_-_Chest_Version",
+  "Pull-up": "Pullups", "Lat pulldown": "Wide-Grip_Lat_Pulldown", "Barbell row": "Bent_Over_Barbell_Row", "Seated cable row": "Seated_Cable_Rows", "One-arm dumbbell row": "One-Arm_Dumbbell_Row", "Deadlift": "Barbell_Deadlift",
+  "Overhead press": "Standing_Military_Press", "Seated dumbbell press": "Seated_Dumbbell_Press", "Lateral raise": "Side_Lateral_Raise", "Face pull": "Face_Pull", "Rear delt fly": "Reverse_Flyes",
+  "Back squat": "Barbell_Squat", "Front squat": "Front_Barbell_Squat", "Romanian deadlift": "Romanian_Deadlift", "Leg press": "Leg_Press", "Bulgarian split squat": "Split_Squat_with_Dumbbells", "Walking lunge": "Bodyweight_Walking_Lunge", "Leg curl": "Lying_Leg_Curls", "Leg extension": "Leg_Extensions", "Hip thrust": "Barbell_Hip_Thrust", "Standing calf raise": "Standing_Calf_Raises",
+  "Barbell curl": "Barbell_Curl", "Dumbbell curl": "Dumbbell_Bicep_Curl", "Hammer curl": "Hammer_Curls", "Triceps pushdown": "Triceps_Pushdown", "Overhead triceps extension": "Cable_Rope_Overhead_Triceps_Extension", "Skull crusher": "EZ-Bar_Skullcrusher",
+  "Plank": "Plank", "Hanging leg raise": "Hanging_Leg_Raise", "Cable crunch": "Cable_Crunch", "Ab wheel rollout": "Ab_Roller", "Kettlebell swing": "One-Arm_Kettlebell_Swings", "Farmer's carry": "Farmers_Walk",
+};
 export function seedGym(S: State) {
-  if (S.gym.exercises.length) return false;
+  let changed = false;
+  if (!S.gym.exercises.length) { changed = true; seedStarter(S); }
+  for (const e of S.gym.exercises) if (!e.custom && !e.lib && LIBMAP[e.name]) { e.lib = LIBMAP[e.name]; changed = true; }
+  return changed;
+}
+function seedStarter(S: State) {
   S.gym.exercises = EX.map(([name, muscle, equip, kind]) => ({ id: "x-" + name.toLowerCase().replace(/[^a-z]+/g, "-").replace(/-$/, ""), name, muscle, equip, kind }));
   const id = (n: string) => "x-" + n.toLowerCase().replace(/[^a-z]+/g, "-").replace(/-$/, "");
   S.gym.routines = [
@@ -147,7 +161,6 @@ export function seedGym(S: State) {
     { id: "r-pull", name: "Pull", items: [["Pull-up", 4, "6-10"], ["Barbell row", 3, "6-8"], ["Seated cable row", 3, "10-12"], ["Face pull", 3, "12-15"], ["Dumbbell curl", 3, "10-12"]].map(([n, s, r]) => ({ ex: id(n as string), sets: s as number, reps: r as string })) },
     { id: "r-legs", name: "Legs", items: [["Back squat", 4, "5-8"], ["Romanian deadlift", 3, "8-10"], ["Bulgarian split squat", 3, "10"], ["Leg curl", 3, "12"], ["Standing calf raise", 4, "12-15"], ["Hanging leg raise", 3, "10-15"]].map(([n, s, r]) => ({ ex: id(n as string), sets: s as number, reps: r as string })) },
   ];
-  return true;
 }
 export const e1rm = (w?: number | null, r?: number | null) => (w && r ? w * (1 + Math.min(r, 12) / 30) : 0);
 export const exById = (S: State, id: string) => S.gym.exercises.find((e) => e.id === id);

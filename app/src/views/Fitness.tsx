@@ -15,7 +15,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, PageHead, Stat } from "@/components/bits";
-import { Check, ChevronDown, ChevronUp, Dumbbell, MoreHorizontal, Pencil, Play, Plus, Search, Timer, Trash2, Trophy, X } from "lucide-react";
+import { ExDetailHost, LibraryTab, openExDetail, useLibSearch } from "./ExLibrary";
+import { ensureFromLib, imgUrl } from "@/lib/exlib";
+import { BookOpen, Info, Check, ChevronDown, ChevronUp, Dumbbell, MoreHorizontal, Pencil, Play, Plus, Search, Timer, Trash2, Trophy, X } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, ReferenceLine } from "recharts";
 
 const useTick = (ms = 1000) => { const [, f] = React.useState(0); React.useEffect(() => { const i = setInterval(() => f((x) => x + 1), ms); return () => clearInterval(i); }, [ms]); };
@@ -48,7 +50,9 @@ function ExercisePicker({ open, onClose, onPick }: { open: boolean; onClose: () 
   const [creating, setCreating] = React.useState(false); const [nx, setNx] = React.useState<{ name: string; muscle: string; kind: Exercise["kind"]; equip: string }>({ name: "", muscle: "Chest", kind: "weight", equip: "" });
   React.useEffect(() => { if (open) { setQ(""); setCreating(false); } }, [open]);
   const counts: Record<string, number> = {}; S.workouts.forEach((w) => w.ex.forEach((e) => (counts[e.ex] = (counts[e.ex] || 0) + 1)));
-  const list = S.gym.exercises.filter((e) => (m === "All" || e.muscle === m) && e.name.toLowerCase().includes(q.toLowerCase())).sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0) || a.name.localeCompare(b.name));
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const libHits = useLibSearch(q, m);
+  const list = S.gym.exercises.filter((e) => (m === "All" || e.muscle === m) && words.every((w) => e.name.toLowerCase().includes(w))).sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0) || a.name.localeCompare(b.name));
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -57,8 +61,16 @@ function ExercisePicker({ open, onClose, onPick }: { open: boolean; onClose: () 
           <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search exercises" className="pl-9" /></div>
           <div className="flex flex-wrap gap-1">{["All", ...MUSCLES].map((x) => <button key={x} onClick={() => setM(x)} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m === x ? "border-foreground bg-foreground text-background" : "text-muted-foreground")}>{x}</button>)}</div>
           <div className="max-h-[45dvh] divide-y overflow-y-auto rounded-md border">
-            {list.map((e) => <button key={e.id} onClick={() => { onPick(e.id); onClose(); }} className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent"><Dumbbell className="h-4 w-4 text-muted-foreground" /><div className="flex-1"><div className="text-sm font-medium">{e.name}</div><div className="text-xs text-muted-foreground">{e.muscle}{e.equip ? ` · ${e.equip}` : ""}</div></div>{counts[e.id] ? <span className="text-xs text-muted-foreground num">{counts[e.id]}×</span> : null}</button>)}
-            {!list.length && <div className="p-3 text-sm text-muted-foreground">No match.</div>}
+            <div className="sticky top-0 z-10 bg-muted/95 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">Your exercises</div>
+            {list.map((e) => <div key={e.id} className="flex items-center hover:bg-accent"><button onClick={() => { onPick(e.id); onClose(); }} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"><Dumbbell className="h-4 w-4 shrink-0 text-muted-foreground" /><div className="min-w-0 flex-1"><div className="text-sm font-medium">{e.name}</div><div className="text-xs text-muted-foreground">{e.muscle}{e.equip ? ` · ${e.equip}` : ""}</div></div>{counts[e.id] ? <span className="text-xs text-muted-foreground num">{counts[e.id]}×</span> : null}</button>
+              {e.lib && <Button variant="ghost" size="icon-sm" className="mr-2" aria-label={`How to do ${e.name}`} onClick={() => openExDetail(e.lib!)}><Info /></Button>}</div>)}
+            {!list.length && <div className="p-3 text-sm text-muted-foreground">None of yours match.</div>}
+            <div className="sticky top-0 z-10 bg-muted/95 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur">From the library</div>
+            {libHits == null ? <div className="p-3 text-sm text-muted-foreground">Loading…</div> : !libHits.length ? <div className="p-3 text-sm text-muted-foreground">{words.length || m !== "All" ? "No library match." : "Type or pick a muscle to search 876 more."}</div>
+              : libHits.map((x) => <div key={x.id} className="flex items-center hover:bg-accent"><button onClick={() => { let id = ""; update((S) => { id = ensureFromLib(S, x); }); onPick(id); onClose(); }} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left">
+                {x.im.length ? <img loading="lazy" src={imgUrl(x)} alt="" className="h-9 w-12 shrink-0 rounded bg-white object-contain" /> : <Dumbbell className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                <div className="min-w-0 flex-1"><div className="text-sm font-medium">{x.n}</div><div className="truncate text-xs text-muted-foreground">{x.p.join(", ")} · {x.e}{x.c === "stretching" ? " · stretch" : ""}</div></div></button>
+                <Button variant="ghost" size="icon-sm" className="mr-2" aria-label={`How to do ${x.n}`} onClick={() => openExDetail(x.id)}><Info /></Button></div>)}
           </div>
           <Button variant="outline" onClick={() => { setCreating(true); setNx({ ...nx, name: q }); }}><Plus />Create “{q || "new exercise"}”</Button>
         </> : <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); if (!nx.name.trim()) return; const id = "x-" + uid(); update((S) => S.gym.exercises.push({ id, name: nx.name.trim(), muscle: nx.muscle, equip: nx.equip, kind: nx.kind, custom: true })); onPick(id); onClose(); }}>
@@ -91,7 +103,7 @@ function ExerciseBlock({ w, e, idx }: { w: Workout; e: WEx; idx: number }) {
   return (
     <Card>
       <CardHeader className="flex-row items-start space-y-0 pb-2">
-        <div className="mr-auto min-w-0"><CardTitle className="text-base text-brand">{x?.name || "Exercise"}</CardTitle><CardDescription>{x?.muscle}{e.target ? ` · target ${e.target}` : ""}{last ? ` · last ${fmtDay(last.w.start.slice(0, 10))}` : ""}</CardDescription></div>
+        <div className="mr-auto min-w-0"><CardTitle className="text-base text-brand">{x?.lib ? <button className="text-left hover:underline" onClick={() => openExDetail(x.lib!)}>{x.name}<Info className="ml-1.5 inline h-3.5 w-3.5 align-[-2px] opacity-60" /></button> : x?.name || "Exercise"}</CardTitle><CardDescription>{x?.muscle}{e.target ? ` · target ${e.target}` : ""}{last ? ` · last ${fmtDay(last.w.start.slice(0, 10))}` : ""}</CardDescription></div>
         <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm"><MoreHorizontal /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem disabled={idx === 0} onSelect={() => update(() => { const a = w.ex; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; })}><ChevronUp />Move up</DropdownMenuItem>
@@ -317,16 +329,19 @@ export function Fitness() {
   useStore();
   const [tab, setTab] = React.useState(() => { try { return localStorage.getItem("lp2-fittab") || "workout"; } catch { return "workout"; } });
   const active = S.gym.active;
+  React.useEffect(() => { const f = () => setTab("workout"); window.addEventListener("lp-fittab", f); return () => window.removeEventListener("lp-fittab", f); }, []);
   return (
     <div>
       <PageHead title="Fitness" sub="Train, log every set, watch the numbers go up." />
       <Tabs value={tab} onValueChange={(v) => { setTab(v); try { localStorage.setItem("lp2-fittab", v); } catch {} }}>
-        <TabsList className="mb-1"><TabsTrigger value="workout">{active ? <span className="h-2 w-2 animate-pulse rounded-full bg-brand" /> : null}Workout</TabsTrigger><TabsTrigger value="progress">Progress</TabsTrigger><TabsTrigger value="history">History</TabsTrigger><TabsTrigger value="body">Body</TabsTrigger></TabsList>
+        <TabsList className="mb-1 grid w-full grid-cols-5 sm:inline-flex sm:w-auto"><TabsTrigger className="px-1 sm:px-3" value="workout">{active ? <span className="h-2 w-2 animate-pulse rounded-full bg-brand" /> : null}Workout</TabsTrigger><TabsTrigger className="px-1 sm:px-3" value="library"><BookOpen className="hidden h-3.5 w-3.5 sm:block" />Library</TabsTrigger><TabsTrigger className="px-1 sm:px-3" value="progress">Progress</TabsTrigger><TabsTrigger className="px-1 sm:px-3" value="history">History</TabsTrigger><TabsTrigger className="px-1 sm:px-3" value="body">Body</TabsTrigger></TabsList>
         <TabsContent value="workout">{active ? <ActiveWorkout w={active} /> : <WorkoutHome />}</TabsContent>
+        <TabsContent value="library"><LibraryTab /></TabsContent>
         <TabsContent value="progress"><ProgressTab /></TabsContent>
         <TabsContent value="history"><HistoryTab /></TabsContent>
         <TabsContent value="body"><BodyTab /></TabsContent>
       </Tabs>
       <RestBar />
+      <ExDetailHost />
     </div>);
 }
