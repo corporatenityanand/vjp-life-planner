@@ -20,7 +20,8 @@ export function Today() {
   const overdue = isToday ? S.tasks.filter((t) => t.date && t.date < d && !t.done) : [];
   const meetings = S.net.meetings.filter((m) => m.date === d && m.status !== "cancelled").sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
   const ws = weekStart(d);
-  const weekTray = S.tasks.filter((t) => !t.done && !t.date && t.week === ws).sort((a, b) => (quad(a) || 5) - (quad(b) || 5)).slice(0, 6);
+  const doNow = S.tasks.filter((t) => !t.done && !t.date && quad(t) === 1).sort((a, b) => (a.week || "z").localeCompare(b.week || "z") || (a.created || "").localeCompare(b.created || ""));
+  const weekTray = S.tasks.filter((t) => !t.done && !t.date && t.week === ws && quad(t) !== 1).sort((a, b) => (quad(a) || 5) - (quad(b) || 5)).slice(0, 6);
   const rest = list.filter((t) => !t.top).sort((a, b) => Number(a.done) - Number(b.done) || (quad(a) || 5) - (quad(b) || 5));
   return (
     <div>
@@ -57,6 +58,13 @@ export function Today() {
                 </div>) : <div key={n} className="flex items-center gap-3 rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground"><span className="w-5 text-center text-xl font-bold num">{n}</span>Star (☆) a task to put it here.</div>; })}
             </CardContent>
           </Card>
+          {doNow.length > 0 && <Card className="border-q1/40">
+            <CardHeader className="pb-1"><CardTitle className="text-base">Do now <span className="text-sm font-normal text-muted-foreground">Q1 tasks without a day</span></CardTitle></CardHeader>
+            <CardContent className="pb-3">{doNow.map((t) => (
+              <div key={t.id} className="flex items-start gap-2 border-b last:border-0">
+                <TaskRow t={t} className="min-w-0 flex-1" />
+                <Button size="xs" variant="outline" className="mt-2.5" onClick={() => update(() => { t.date = d; t.week = null; })}>Do {isToday ? "today" : "this day"}</Button>
+              </div>))}</CardContent></Card>}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4 text-fam" />Meetings</CardTitle></CardHeader>
             <CardContent>{meetings.length ? meetings.map((m) => (

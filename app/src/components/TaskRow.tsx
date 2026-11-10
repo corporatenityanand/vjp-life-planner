@@ -72,6 +72,7 @@ export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact
             {!hide.includes("company") && <CompanyBadge id={t.company} />}
             {!hide.includes("fn") && <FnBadge fn={t.fn} />}
             {!hide.includes("order") && <OrderBadge id={t.order} />}
+            {t.lead && !hide.includes("order") && (() => { const l = (S.work.leads || []).find((x) => x.id === t.lead); return l ? <button onClick={() => { location.hash = "sales"; try { localStorage.setItem("lp2-salestab", "leads"); } catch {} setUI({ leadSheet: l.id }); }} className="max-w-[180px] truncate rounded-md border border-dashed px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">Lead: {l.title || "untitled"}</button> : null; })()}
             <PlanPopover t={t}><button className="inline-flex items-center gap-1.5"><QBadge q={q} />{!hide.includes("when") && whenLabel(t) && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium"><CalendarDays className="h-3 w-3" />{whenLabel(t)}</span>}</button></PlanPopover>
             {!!t.carried && t.carried >= 2 && !t.done && <span className="text-[11px] font-semibold text-q2">moved {t.carried}×</span>}
           </div>)}
