@@ -134,7 +134,7 @@ export function WorkoutBuilder({ open, onClose, title, existing = [], actions, a
   };
 
   const pickPane = (
-    <div className={cn("flex min-h-0 flex-col", step === "review" && "hidden lg:flex")}>
+    <div className={cn("flex min-h-0 min-w-0 flex-col", step === "review" && "hidden lg:flex")}>
       <div className="space-y-2 p-4 pb-2">
         <div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your exercises and the library" className="pl-9" /></div>
         <div className="flex flex-wrap gap-1">{["All", ...MUSCLES].map((x) => <button key={x} onClick={() => setM(x)} className={cn("rounded-full border px-2.5 py-0.5 text-xs", m === x ? "border-foreground bg-foreground text-background" : "text-muted-foreground")}>{x}</button>)}</div>
@@ -192,7 +192,7 @@ export function WorkoutBuilder({ open, onClose, title, existing = [], actions, a
             <button onClick={() => setStep("review")} className={cn("rounded-md px-2.5 py-1", step === "review" && "bg-background font-medium shadow-sm")}>2 Review{picked.length ? ` (${picked.length})` : ""}</button>
           </div>
         </div>
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_400px]">{pickPane}{reviewPane}</div>
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px]">{pickPane}{reviewPane}</div>
         <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
           <span className="mr-auto text-sm text-muted-foreground num">{picked.length} exercise{picked.length === 1 ? "" : "s"} · {picked.reduce((n, p) => n + p.sets, 0)} sets</span>
           {step === "pick" && <Button className="lg:hidden" variant="outline" disabled={!picked.length} onClick={() => setStep("review")}>Review<ChevronRight /></Button>}
