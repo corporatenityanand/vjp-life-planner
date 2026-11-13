@@ -9,7 +9,7 @@ export const COMPANIES_DEFAULT = [
   { id: "GE", short: "Gowda", name: "Gowda Estates", color: "#9333ea" },
 ];
 export const ORDER_STATUS: [string, string][] = [["pipeline", "Pipeline"], ["ongoing", "Ongoing"], ["finalbill", "Final bill pending"], ["halted", "Halted"], ["complete", "Complete"], ["cancelled", "Cancelled"]];
-export const PILLARS: Record<string, string> = { fin: "Work", fit: "Fitness", fam: "Family", oth: "Other" };
+export const PILLARS: Record<string, string> = { fin: "Work", fit: "Fitness", fam: "Family", oth: "Personal" };
 export const QLABEL: Record<number, string> = { 1: "Do now", 2: "Schedule", 3: "Delegate", 4: "Later" };
 export const QSUB: Record<number, string> = { 1: "urgent + important", 2: "important, not urgent", 3: "urgent, not important", 4: "neither" };
 export const Q2UI: Record<number, [boolean, boolean]> = { 1: [true, true], 2: [false, true], 3: [true, false], 4: [false, false] };
@@ -27,7 +27,7 @@ export const LEAD_STAGES: [string, string][] = [["new", "New"], ["contacted", "C
 export const OPEN_STAGES = ["new", "contacted", "meeting", "proposal", "negotiation"];
 export type Meeting = { id: string; title: string; who?: string; org?: string; company?: string | null; purpose?: string; date?: string | null; week?: string | null; start?: string; mins?: number; place?: string; status: "planned" | "done" | "cancelled"; lead?: string | null; outcome?: string; followUp?: string; created?: string };
 export type Task = { id: string; t: string; p: string; date: string | null; week?: string | null; u: boolean | null; i: boolean | null; imp?: number | null; top: number; done: boolean; doneAt?: string | null; carried?: number; created?: string;
-  company?: string | null; fn?: string | null; order?: string | null; lead?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any };
+  company?: string | null; fn?: string | null; order?: string | null; lead?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any; asset?: string | null; list?: string | null };
 export type Focus = { id: string; at: string; mins: number; taskId?: string | null; p?: string; label?: string; company?: string | null; fn?: string | null; kind?: "focus" | "manual" | "meeting" };
 export type State = {
   settings: { work: number; short: number; long: number; every: number; sound: boolean; netPerWeek?: number };
@@ -36,6 +36,7 @@ export type State = {
   net: { meetings: Meeting[] };
   gym: Gym;
   billing: import("./billing").Billing | null;
+  personal: Personal;
   tasks: Task[]; focus: Focus[]; workouts: Workout[];
 };
 export type Exercise = { id: string; name: string; muscle: string; equip?: string; kind: "weight" | "bw" | "time"; custom?: boolean; lib?: string };
@@ -54,6 +55,7 @@ export function blank(): State {
     net: { meetings: [] },
     gym: { exercises: [], routines: [], active: null, rest: 90 },
     billing: null,
+    personal: { assets: [], repeats: [], lists: [...PERSONAL_LISTS] },
     tasks: [], focus: [], workouts: [],
   };
 }
@@ -179,3 +181,62 @@ export function lastFor(S: State, exId: string, before?: string) {
 }
 export const volume = (w: Workout) => w.ex.reduce((n, e) => n + e.sets.reduce((m, s) => m + (s.done && !s.warm ? (s.w || 0) * (s.r || 0) : 0), 0), 0);
 export const doneSets = (w: Workout) => w.ex.reduce((n, e) => n + e.sets.filter((s) => s.done && !s.warm).length, 0);
+
+/* ---------- personal: assets, errands, repeating chores ---------- */
+export const PERSONAL_LISTS = ["Shopping", "Errands", "Self-care", "Home", "Money"];
+export type AssetKind = "house" | "property" | "car" | "bike" | "other";
+export const ASSET_KINDS: [AssetKind, string][] = [["house", "House / flat"], ["property", "Land / property"], ["car", "Car"], ["bike", "Bike"], ["other", "Other"]];
+export type Asset = { id: string; name: string; kind: AssetKind; detail?: string; notes?: string; docs?: Doc[]; created?: string; archived?: boolean };
+/** A chore that comes back. `from`: "done" counts the gap from when you last did it (haircut, car wash); "due" keeps fixed dates (insurance, property tax). */
+export type Repeat = { id: string; title: string; asset?: string | null; list?: string | null; every: number; unit: "d" | "w" | "m" | "y"; from: "done" | "due"; next: string; last?: string | null; lead?: number; q?: number; paused?: boolean; made?: string };
+export type Personal = { assets: Asset[]; repeats: Repeat[]; lists: string[] };
+export const UNIT_LABEL: Record<Repeat["unit"], [string, string]> = { d: ["day", "days"], w: ["week", "weeks"], m: ["month", "months"], y: ["year", "years"] };
+export const everyText = (r: Pick<Repeat, "every" | "unit">) => r.every === 1 ? `Every ${UNIT_LABEL[r.unit][0]}` : `Every ${r.every} ${UNIT_LABEL[r.unit][1]}`;
+export function addEvery(d: string, every: number, unit: Repeat["unit"]) {
+  if (unit === "d") return addDays(d, every); if (unit === "w") return addDays(d, every * 7);
+  const [y, m, day] = d.split("-").map(Number); const months = unit === "m" ? every : every * 12;
+  const t = new Date(y, m - 1 + months, 1); const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  t.setDate(Math.min(day, last)); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+}
+type Preset = Omit<Repeat, "id" | "next" | "asset" | "last">;
+const P = (title: string, every: number, unit: Repeat["unit"], from: Repeat["from"] = "done", list: string | null = null): Preset => ({ title, every, unit, from, list, lead: unit === "y" ? 14 : unit === "m" && every >= 3 ? 5 : 0, q: unit === "y" ? 2 : undefined });
+export const ASSET_PRESETS: Record<AssetKind, Preset[]> = {
+  car: [P("Service", 6, "m"), P("Insurance renewal", 1, "y", "due"), P("PUC check", 6, "m", "due"), P("Wash and clean inside", 2, "w"), P("Check tyre pressure", 1, "m")],
+  bike: [P("Service", 4, "m"), P("Insurance renewal", 1, "y", "due"), P("PUC check", 6, "m", "due")],
+  house: [P("Pay property tax", 1, "y", "due"), P("Pay society maintenance", 1, "m", "due"), P("Pay electricity bill", 1, "m", "due"), P("Pest control", 3, "m"), P("Water purifier service", 3, "m"), P("AC service", 6, "m")],
+  property: [P("Pay property tax", 1, "y", "due"), P("Site visit", 3, "m"), P("Collect rent", 1, "m", "due")],
+  other: [P("Check and maintain", 3, "m")],
+};
+export const PERSONAL_PRESETS: Preset[] = [P("Haircut", 4, "w", "done", "Self-care"), P("Groceries", 1, "w", "done", "Shopping"), P("Dentist check-up", 6, "m", "done", "Self-care"), P("Pay credit card bill", 1, "m", "due", "Money")];
+export function addRepeat(S: State, p: Preset, extra: Partial<Repeat> = {}) {
+  const r: Repeat = { id: uid(), asset: null, next: todayStr(), last: null, ...p, ...extra }; S.personal.repeats.push(r); return r;
+}
+export const assetOf = (S: State, id?: string | null) => (id ? S.personal.assets.find((a) => a.id === id) : undefined);
+export const repeatTitle = (S: State, r: Repeat) => { const a = assetOf(S, r.asset); return a ? `${r.title} · ${a.name}` : r.title; };
+/** Creates the task for each repeat that's coming due, and moves a repeat on once its task is done. Returns true when it changed anything. */
+export function runRepeats(S: State, today = todayStr()): boolean {
+  let changed = false; if (!S.personal) return false;
+  for (const r of S.personal.repeats) {
+    const mine = S.tasks.filter((t) => t.ref?.rep === r.id && t.ref?.due === r.next);
+    const done = mine.find((t) => t.done);
+    if (done) { const d = (done.doneAt || new Date().toISOString()).slice(0, 10); r.last = d; let n = addEvery(r.from === "done" ? d : r.next, r.every, r.unit); while (r.from === "due" && n <= d && n < "2100") n = addEvery(n, r.every, r.unit); r.next = n; changed = true; continue; }
+    if (r.paused || mine.length || r.made === r.next) continue; // made === next: its task was deleted, so don't bring it back
+    if (addDays(r.next, -(r.lead || 0)) <= today) {
+      const t = newTask(S, repeatTitle(S, r), { p: "oth", asset: r.asset || null, list: r.list || null, date: r.next < today ? today : r.next, ref: { rep: r.id, due: r.next } } as Partial<Task>);
+      t.p = "oth"; if (r.q) setQ(t, r.q); r.made = r.next; changed = true;
+    }
+  }
+  return changed;
+}
+/** Skip this round: drop its open task and move the date on. */
+export function skipRepeat(S: State, r: Repeat) {
+  S.tasks = S.tasks.filter((t) => !(t.ref?.rep === r.id && t.ref?.due === r.next && !t.done));
+  r.next = addEvery(r.next, r.every, r.unit);
+}
+export const personalTasks = (S: State) => S.tasks.filter((t) => t.p === "oth" && !t.company && !t.order);
+/** "Done" pressed on a repeat: ticks its task (making one if it hasn't been created yet), which moves the repeat on. */
+export function doRepeatNow(S: State, r: Repeat) {
+  let t = S.tasks.find((x) => x.ref?.rep === r.id && x.ref?.due === r.next && !x.done);
+  if (!t) { t = newTask(S, repeatTitle(S, r), { p: "oth", asset: r.asset || null, list: r.list || null, date: todayStr(), ref: { rep: r.id, due: r.next } } as Partial<Task>); t.p = "oth"; r.made = r.next; }
+  setDone(t, true);
+}

@@ -2,9 +2,9 @@
    Every edit is cached in this browser at once and its records marked unsaved; unsaved records win over what the Sheet sends
    until the Sheet confirms it stored them. */
 import { useSyncExternalStore } from "react";
-import { blank, type State, migrate, seedGym } from "./model";
+import { blank, type State, migrate, seedGym, runRepeats } from "./model";
 
-const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net", "gym", "billing"] as const;
+const FIXED = ["settings", "projects", "goals", "vices", "weeks", "fitlog", "famlog", "work", "net", "gym", "billing", "personal"] as const;
 const LS_DOCS = "lp2-docs", LS_DIRTY = "lp2-dirty", LS_CFG = "lp-sheet";
 const isObj = (x: any) => x && typeof x === "object" && !Array.isArray(x);
 export const canon = (x: any) => JSON.stringify(x, (_k, v) => (isObj(v) ? Object.keys(v).sort().reduce((o: any, kk) => ((o[kk] = v[kk]), o), {}) : v));
@@ -63,7 +63,7 @@ function markDirty() { const m = toDocs(S); let ch = false; for (const k in m) {
 let saveTimer: any = null;
 /** Mutate state, then cache, mark unsaved and schedule an autosave. */
 export function update(fn: (s: State) => void) {
-  fn(S);
+  fn(S); runRepeats(S);
   markDirty(); cacheLocal();
   if (CFG && DIRTY.size) sync.mode = "dirty";
   clearTimeout(saveTimer);
@@ -122,7 +122,7 @@ export async function connect() {
     if (DIRTY.size) pushNow(false); else setSync("synced");
   } catch (e: any) { lastErr = e.message || String(e); setSync("error", "couldn't load from Sheet (" + lastErr + ")"); }
 }
-function runMigrate() { const m = migrate(S); const g = seedGym(S); if (m || g) update(() => {}); else emit(); if (m) toast("Moved your projects into the new Companies and Sales orders layout."); }
+function runMigrate() { const m = migrate(S); const g = seedGym(S); const r = runRepeats(S); if (m || g || r) update(() => {}); else emit(); if (m) toast("Moved your projects into the new Companies and Sales orders layout."); }
 export function setConfig(c: { url: string; token: string } | null) {
   CFG = c; try { if (c) localStorage.setItem(LS_CFG, JSON.stringify(c)); else localStorage.removeItem(LS_CFG); } catch {}
   dbReady = false; return connect();

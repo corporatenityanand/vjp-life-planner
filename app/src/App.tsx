@@ -15,7 +15,8 @@ import { Quit } from "@/views/Quit";
 import { Review } from "@/views/Review";
 const Fitness = React.lazy(() => import("@/views/Fitness").then((m) => ({ default: m.Fitness })));
 import { Family } from "@/views/Family";
-import { CalendarDays, Building2, Handshake, Timer, ShieldCheck, LineChart, Sun, MoreHorizontal, Moon, Dumbbell, Save, Loader2, Heart } from "lucide-react";
+import { Personal } from "@/views/Personal";
+import { CalendarDays, Building2, Handshake, Timer, ShieldCheck, LineChart, Sun, MoreHorizontal, Moon, Dumbbell, Save, Loader2, Heart, User } from "lucide-react";
 
 const ROUTES = [
   { id: "today", label: "Today", icon: Sun, C: Today },
@@ -25,6 +26,7 @@ const ROUTES = [
   { id: "fitness", label: "Fitness", icon: Dumbbell, C: Fitness },
   { id: "focus", label: "Focus", icon: Timer, C: Focus },
   { id: "family", label: "Family", icon: Heart, C: Family },
+  { id: "personal", label: "Personal", icon: User, C: Personal },
   { id: "quit", label: "Quit", icon: ShieldCheck, C: Quit },
   { id: "review", label: "Review", icon: LineChart, C: Review },
 ];

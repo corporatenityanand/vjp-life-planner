@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CompanyBadge, FnBadge, OrderBadge, QBadge, qColor } from "./bits";
 import { setUI } from "./ui-state";
-import { CalendarDays, MoreHorizontal, Play, Star, Trash2, Pencil, Inbox, ArrowRight } from "lucide-react";
+import { Home, Repeat, CalendarDays, MoreHorizontal, Play, Star, Trash2, Pencil, Inbox, ArrowRight } from "lucide-react";
 
 export function PlanPopover({ t, children, ws }: { t: Task; children: React.ReactNode; ws?: string }) {
   const base = ws || weekStart(t.date || t.week || todayStr());
@@ -52,7 +52,7 @@ export function PlanPopover({ t, children, ws }: { t: Task; children: React.Reac
 
 export function whenLabel(t: Task) { if (t.date) return t.date === todayStr() ? "Today" : fmtShort(t.date); if (t.week) return "Wk " + fmtShort(t.week); return ""; }
 
-export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact?: boolean; hide?: ("company" | "fn" | "order" | "when")[]; className?: string }) {
+export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact?: boolean; hide?: ("company" | "fn" | "order" | "when" | "asset")[]; className?: string }) {
   useStore();
   const q = quad(t);
   const star = () => update((S) => {
@@ -73,6 +73,9 @@ export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact
             {!hide.includes("fn") && <FnBadge fn={t.fn} />}
             {!hide.includes("order") && <OrderBadge id={t.order} />}
             {t.lead && !hide.includes("order") && (() => { const l = (S.work.leads || []).find((x) => x.id === t.lead); return l ? <button onClick={() => { location.hash = "sales"; try { localStorage.setItem("lp2-salestab", "leads"); } catch {} setUI({ leadSheet: l.id }); }} className="max-w-[180px] truncate rounded-md border border-dashed px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground">Lead: {l.title || "untitled"}</button> : null; })()}
+            {t.asset && !hide.includes("asset") && (() => { const a = S.personal?.assets.find((x) => x.id === t.asset); return a ? <button onClick={() => { location.hash = "personal"; setUI({ asset: a.id }); }} className="inline-flex max-w-[180px] items-center gap-1 truncate rounded-md border border-dashed px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"><Home className="h-3 w-3 shrink-0" /><span className="truncate">{a.name}</span></button> : null; })()}
+            {t.list && !hide.includes("fn") && <FnBadge fn={t.list} />}
+            {t.ref?.rep && <span title="Repeats" className="inline-flex items-center text-muted-foreground"><Repeat className="h-3 w-3" /></span>}
             <PlanPopover t={t}><button className="inline-flex items-center gap-1.5"><QBadge q={q} />{!hide.includes("when") && whenLabel(t) && <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium"><CalendarDays className="h-3 w-3" />{whenLabel(t)}</span>}</button></PlanPopover>
             {!!t.carried && t.carried >= 2 && !t.done && <span className="text-[11px] font-semibold text-q2">moved {t.carried}×</span>}
           </div>)}

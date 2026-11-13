@@ -38,3 +38,25 @@ export function OrderSelect({ value, company, onChange, className }: { value?: s
       </SelectContent>
     </Select>);
 }
+export function ListSelect({ value, onChange, className }: { value?: string | null; onChange: (v: string | null) => void; className?: string }) {
+  useStore();
+  return (
+    <Select value={value || N} onValueChange={(v) => onChange(v === N ? null : v)}>
+      <SelectTrigger className={className} aria-label="List"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={N}>No list</SelectItem>
+        {(S.personal?.lists || []).map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+      </SelectContent>
+    </Select>);
+}
+export function AssetSelect({ value, onChange, className }: { value?: string | null; onChange: (v: string | null) => void; className?: string }) {
+  useStore();
+  return (
+    <Select value={value || N} onValueChange={(v) => onChange(v === N ? null : v)}>
+      <SelectTrigger className={className} aria-label="Asset"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={N}>No asset</SelectItem>
+        {(S.personal?.assets || []).filter((a) => !a.archived || a.id === value).map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+      </SelectContent>
+    </Select>);
+}
