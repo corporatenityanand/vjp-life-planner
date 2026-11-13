@@ -116,7 +116,7 @@ function AssetDialog() {
   const I = KIND_ICON[a.kind];
   return (
     <Dialog open onOpenChange={(o) => !o && setUI({ asset: null })}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader><DialogTitle className="flex items-center gap-2 pr-6"><I className="h-5 w-5 text-muted-foreground" /><span className="truncate">{a.name}</span></DialogTitle><DialogDescription>{KIND_LABEL[a.kind]}{a.detail ? ` · ${a.detail}` : ""}</DialogDescription></DialogHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
           <div className="space-y-1.5"><Label>Name</Label><Input value={a.name} onChange={(e) => update(() => { a.name = e.target.value; })} /></div>
