@@ -1,10 +1,11 @@
-// Exercise library: 1,993 exercises. 876 from free-exercise-db (public domain, Unlicense, with photos) plus 1,117 from
+// Exercise library: about 2,040 exercises, including 46 "vjp-…" entries written for this app (holds, mobility, bands).
+// Base: 876 from free-exercise-db (public domain, Unlicense, with photos) plus 1,117 from
 // exercises-dataset by Hasan Emir Yıldırım (MIT, data only, ids "hx-…"; its GIFs are © Gym visual and not used). See data/NOTICE.md.
 // Bundled as a lazy chunk; images are served from the project's GitHub repo.
 import * as React from "react";
 import type { Exercise, State } from "./model";
 
-export type LibEx = { id: string; n: string; c: string; l: string; e: string; f: string; m: string; p: string[]; s: string[]; i: string[]; im: string[]; src?: string };
+export type LibEx = { id: string; n: string; c: string; l: string; e: string; f: string; m: string; p: string[]; s: string[]; i: string[]; im: string[]; src?: string; k?: "time" };
 
 let cache: LibEx[] | null = null; let pending: Promise<LibEx[]> | null = null;
 export function loadLib() {
@@ -28,7 +29,7 @@ export function ytEmbed(url?: string) {
   return m ? "https://www.youtube-nocookie.com/embed/" + m[1] : null;
 }
 
-export const CATS: [string, string][] = [["strength", "Strength"], ["stretching", "Stretches"], ["plyometrics", "Plyometrics"], ["cardio", "Cardio"], ["powerlifting", "Powerlifting"], ["olympic weightlifting", "Olympic"], ["strongman", "Strongman"]];
+export const CATS: [string, string][] = [["strength", "Strength"], ["isometric", "Isometrics"], ["stretching", "Stretches"], ["plyometrics", "Plyometrics"], ["cardio", "Cardio"], ["powerlifting", "Powerlifting"], ["olympic weightlifting", "Olympic"], ["strongman", "Strongman"]];
 export const LIB_MUSCLES = ["chest", "shoulders", "biceps", "triceps", "forearms", "lats", "middle back", "lower back", "traps", "neck", "abdominals", "quadriceps", "hamstrings", "glutes", "calves", "adductors", "abductors"];
 export const LIB_EQUIP = ["body only", "dumbbell", "barbell", "cable", "machine", "kettlebells", "bands", "e-z curl bar", "exercise ball", "medicine ball", "foam roll", "other", "none"];
 const GROUP: Record<string, string> = { chest: "Chest", lats: "Back", "middle back": "Back", "lower back": "Back", traps: "Back", shoulders: "Shoulders", neck: "Shoulders", quadriceps: "Legs", hamstrings: "Legs", glutes: "Legs", calves: "Legs", abductors: "Legs", adductors: "Legs", biceps: "Arms", triceps: "Arms", forearms: "Arms", abdominals: "Core" };
@@ -38,7 +39,7 @@ export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function ensureFromLib(S: State, x: LibEx) {
   const have = S.gym.exercises.find((e) => e.lib === x.id);
   if (have) return have.id;
-  const kind: Exercise["kind"] = x.c === "stretching" || x.c === "cardio" ? "time" : x.e === "body only" || x.e === "none" ? "bw" : "weight";
+  const kind: Exercise["kind"] = x.k ? x.k : x.c === "stretching" || x.c === "cardio" ? "time" : x.e === "body only" || x.e === "none" ? "bw" : "weight";
   const muscle = x.p.length > 1 && x.c !== "stretching" ? "Full body" : GROUP[x.p[0]] || "Full body";
   const id = "L-" + x.id;
   S.gym.exercises.push({ id, name: x.n, muscle, equip: cap(x.e), kind, lib: x.id });

@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, PageHead, Stat } from "@/components/bits";
 import { ExDetailHost, LibraryTab, openExDetail } from "./ExLibrary";
 import { WorkoutBuilder, BItem } from "./Builder";
+import { Programs } from "./Programs";
 import { BookOpen, Info, Check, ChevronDown, ChevronUp, Dumbbell, MoreHorizontal, Pencil, Play, Plus, Search, Timer, Trash2, Trophy, X } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, ReferenceLine } from "recharts";
 
@@ -187,6 +188,7 @@ function WorkoutHome() {
             <CardContent className="space-y-3"><div className="text-sm text-muted-foreground">{r.items.map((it) => `${exById(S, it.ex)?.name || "?"} ${it.sets}×${it.reps}`).join(" · ")}</div><Button className="w-full" onClick={() => startWorkout(r)}><Play />Start {r.name}</Button></CardContent></Card>); })}
       </div>
       <RoutineEditor r={edit} onClose={() => setEdit(null)} />
+      <Programs className="pt-4" onStart={(r) => startWorkout(r)} />
     </div>);
 }
 
