@@ -8,3 +8,4 @@ window.addEventListener("pagehide", beaconSave);
 document.addEventListener("visibilitychange", () => { if (document.hidden) beaconSave(); });
 ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><App /></React.StrictMode>);
 connect();
+if ("serviceWorker" in navigator && location.protocol === "https:") window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
