@@ -27,7 +27,7 @@ export const LEAD_STAGES: [string, string][] = [["new", "New"], ["contacted", "C
 export const OPEN_STAGES = ["new", "contacted", "meeting", "proposal", "negotiation"];
 export type Meeting = { id: string; title: string; who?: string; org?: string; company?: string | null; purpose?: string; date?: string | null; week?: string | null; start?: string; mins?: number; place?: string; status: "planned" | "done" | "cancelled"; lead?: string | null; outcome?: string; followUp?: string; created?: string };
 export type Task = { id: string; t: string; p: string; date: string | null; week?: string | null; u: boolean | null; i: boolean | null; imp?: number | null; top: number; done: boolean; doneAt?: string | null; carried?: number; created?: string;
-  company?: string | null; fn?: string | null; order?: string | null; lead?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any; asset?: string | null; list?: string | null };
+  company?: string | null; fn?: string | null; order?: string | null; lead?: string | null; meeting?: string | null; est?: number | null; notes?: string; biz?: string | null; ref?: any; asset?: string | null; list?: string | null; start?: string | null };
 export type Focus = { id: string; at: string; mins: number; taskId?: string | null; p?: string; label?: string; company?: string | null; fn?: string | null; kind?: "focus" | "manual" | "meeting" };
 export type State = {
   settings: { work: number; short: number; long: number; every: number; sound: boolean; netPerWeek?: number };
@@ -240,3 +240,15 @@ export function doRepeatNow(S: State, r: Repeat) {
   if (!t) { t = newTask(S, repeatTitle(S, r), { p: "oth", asset: r.asset || null, list: r.list || null, date: todayStr(), ref: { rep: r.id, due: r.next } } as Partial<Task>); t.p = "oth"; r.made = r.next; }
   setDone(t, true);
 }
+/** Short "where it belongs" line for a task: project and function, or lead, asset or list. */
+export function taskContext(S: State, t: Task): string {
+  const o = t.order ? S.work.orders.find((x) => x.id === t.order) : undefined;
+  if (o) return [o.title, t.fn].filter(Boolean).join(" · ");
+  const l = t.lead ? (S.work.leads || []).find((x) => x.id === t.lead) : undefined;
+  if (l) return "Lead: " + l.title;
+  const a = t.asset ? S.personal?.assets.find((x) => x.id === t.asset) : undefined;
+  if (a) return a.name;
+  return t.fn || t.list || "";
+}
+export const DURS = [15, 30, 45, 60, 90, 120, 180];
+export const endTime = (start: string, mins: number) => { const [h, m] = start.split(":").map(Number); const e = h * 60 + m + mins; return `${String(Math.floor(e / 60) % 24).padStart(2, "0")}:${String(e % 60).padStart(2, "0")}`; };

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { S, update, useStore, toast } from "@/lib/store";
-import { findTask, quad, setDone, setQ, QLABEL, normalizeTop } from "@/lib/model";
+import { DURS, findTask, quad, setDone, setQ, QLABEL, normalizeTop } from "@/lib/model";
 import { hm, todayStr, uid, weekStart } from "@/lib/date";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
@@ -44,9 +44,13 @@ export function TaskSheet() {
           <div className="grid grid-cols-4 gap-1.5">{[1, 2, 3, 4].map((n) => <button key={n} onClick={() => update(() => setQ(t, q === n ? 0 : n))} className={cn("rounded-md border px-1 py-1.5 text-xs font-semibold", q === n ? qColor[n] : "text-muted-foreground hover:bg-accent")}>Q{n}<div className="text-[10px] font-medium">{QLABEL[n]}</div></button>)}</div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5"><Label>Day</Label><Input type="date" value={t.date || ""} onChange={(e) => update((S) => { const old = t.date; t.date = e.target.value || null; t.top = 0; if (old) normalizeTop(S, old); if (t.date) t.week = null; })} /></div>
-          <div className="space-y-1.5"><Label>Or just the week of</Label><Input type="date" value={t.week || ""} onChange={(e) => update(() => { t.week = e.target.value ? weekStart(e.target.value) : null; if (t.week) { t.date = null; t.top = 0; } })} /></div>
+          <div className="space-y-1.5"><Label>Day</Label><Input type="date" value={t.date || ""} onChange={(e) => update((S) => { const old = t.date; t.date = e.target.value || null; t.top = 0; if (!t.date) t.start = null; if (old) normalizeTop(S, old); if (t.date) t.week = null; })} /></div>
+          <div className="space-y-1.5"><Label>Or just the week of</Label><Input type="date" value={t.week || ""} onChange={(e) => update(() => { t.week = e.target.value ? weekStart(e.target.value) : null; if (t.week) { t.date = null; t.start = null; t.top = 0; } })} /></div>
         </div>
+        {t.date && <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Start time</Label><Input type="time" step={900} value={t.start || ""} onChange={(e) => update(() => { t.start = e.target.value || null; if (t.start && !t.est) t.est = 60; })} /></div>
+          <div className="space-y-1.5"><Label>How long</Label><select value={t.est || 60} onChange={(e) => update(() => { t.est = +e.target.value; })} className="h-9 w-full rounded-md border bg-background px-2 text-sm">{DURS.map((m) => <option key={m} value={m}>{hm(m)}</option>)}</select></div>
+        </div>}
         <div className="space-y-1.5"><Label>Time spent{spent ? `: ${hm(spent)}` : ""}</Label>
           <div className="flex flex-wrap gap-1.5">{[15, 30, 60, 120].map((m) => <Button key={m} variant="outline" size="xs" onClick={() => logTime(m)}>+ {hm(m)}</Button>)}</div>
           <p className="text-xs text-muted-foreground">Focus timer blocks on this task are added automatically.</p>

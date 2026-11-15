@@ -22,7 +22,7 @@ export function Today() {
   const ws = weekStart(d);
   const doNow = S.tasks.filter((t) => !t.done && !t.date && quad(t) === 1).sort((a, b) => (a.week || "z").localeCompare(b.week || "z") || (a.created || "").localeCompare(b.created || ""));
   const weekTray = S.tasks.filter((t) => !t.done && !t.date && t.week === ws && quad(t) !== 1).sort((a, b) => (quad(a) || 5) - (quad(b) || 5)).slice(0, 6);
-  const rest = list.filter((t) => !t.top).sort((a, b) => Number(a.done) - Number(b.done) || (quad(a) || 5) - (quad(b) || 5));
+  const rest = list.filter((t) => !t.top).sort((a, b) => Number(a.done) - Number(b.done) || (a.start || "99").localeCompare(b.start || "99") || (quad(a) || 5) - (quad(b) || 5));
   return (
     <div>
       <PageHead title={isToday ? "Today" : fmtLong(d)} sub={isToday ? fmtLong(d) : daysBetween(todayStr(), d) > 0 ? "Planning ahead" : "Looking back"}>

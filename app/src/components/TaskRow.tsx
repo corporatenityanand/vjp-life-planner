@@ -1,15 +1,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { S, update, useStore, toast } from "@/lib/store";
-import { Task, quad, setDone, setQ, normalizeTop, topOf, QLABEL, QSUB } from "@/lib/model";
-import { addDays, fmtShort, todayStr, weekStart, weekDays } from "@/lib/date";
+import { Task, DURS, endTime, quad, setDone, setQ, normalizeTop, topOf, QLABEL, QSUB } from "@/lib/model";
+import { addDays, fmtShort, hm, todayStr, weekStart, weekDays } from "@/lib/date";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CompanyBadge, FnBadge, OrderBadge, QBadge, qColor } from "./bits";
 import { setUI } from "./ui-state";
-import { Home, Repeat, CalendarDays, MoreHorizontal, Play, Star, Trash2, Pencil, Inbox, ArrowRight } from "lucide-react";
+import { CalendarClock, Home, Repeat, CalendarDays, MoreHorizontal, Play, Star, Trash2, Pencil, Inbox, ArrowRight } from "lucide-react";
 
 export function PlanPopover({ t, children, ws }: { t: Task; children: React.ReactNode; ws?: string }) {
   const base = ws || weekStart(t.date || t.week || todayStr());
@@ -37,20 +37,29 @@ export function PlanPopover({ t, children, ws }: { t: Task; children: React.Reac
         </div>
         <div className="mt-1.5 grid grid-cols-7 gap-1">
           {weekDays(w).map((d) => (
-            <button key={d} onClick={() => update(() => { if (t.date !== d) { t.top = 0; t.date = d; t.week = null; } else { t.date = null; t.week = w; } })}
+            <button key={d} onClick={() => update(() => { if (t.date !== d) { t.top = 0; t.date = d; t.week = null; } else { t.date = null; t.start = null; t.week = w; } })}
               className={cn("rounded-md border py-1.5 text-[11px] font-medium leading-tight", t.date === d ? "border-brand bg-brand text-black" : d === todayStr() ? "border-brand/60" : "hover:bg-accent")}>
               {fmtShort(d).split(" ")[0]}<br /><span className="num">{fmtShort(d).split(" ")[1]}</span>
             </button>))}
         </div>
         <div className="mt-1.5 flex gap-1.5">
-          <Button size="xs" variant={!t.date && t.week === w ? "brand" : "outline"} className="flex-1" onClick={() => update(() => { t.date = null; t.week = w; t.top = 0; })}>This week, no day</Button>
-          <Button size="xs" variant={!t.date && !t.week ? "secondary" : "outline"} className="flex-1" onClick={() => update(() => { t.date = null; t.week = null; t.top = 0; })}><Inbox />Backlog</Button>
+          <Button size="xs" variant={!t.date && t.week === w ? "brand" : "outline"} className="flex-1" onClick={() => update(() => { t.date = null; t.start = null; t.week = w; t.top = 0; })}>This week, no day</Button>
+          <Button size="xs" variant={!t.date && !t.week ? "secondary" : "outline"} className="flex-1" onClick={() => update(() => { t.date = null; t.start = null; t.week = null; t.top = 0; })}><Inbox />Backlog</Button>
         </div>
+        <div className="mt-3 text-xs font-medium text-muted-foreground">Time slot</div>
+        {t.date ? <>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <input type="time" step={900} aria-label="Start time" value={t.start || ""} onChange={(e) => update(() => { t.start = e.target.value || null; if (t.start && !t.est) t.est = 60; })} className="h-8 rounded-md border bg-background px-2 text-sm num" />
+            {t.start && <span className="text-xs text-muted-foreground num">to {endTime(t.start, t.est || 60)}</span>}
+            {t.start && <Button size="xs" variant="ghost" className="ml-auto" onClick={() => update(() => { t.start = null; })}>Clear</Button>}
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1">{DURS.map((m) => <button key={m} onClick={() => update(() => { t.est = m; if (!t.start) t.start = "10:00"; })} className={cn("rounded-md border px-1.5 py-1 text-[11px] font-medium num", t.start && (t.est || 60) === m ? "border-brand bg-brand/15" : "hover:bg-accent")}>{hm(m)}</button>)}</div>
+        </> : <p className="mt-1 text-xs text-muted-foreground">Pick a day first, then a time.</p>}
       </PopoverContent>
     </Popover>);
 }
 
-export function whenLabel(t: Task) { if (t.date) return t.date === todayStr() ? "Today" : fmtShort(t.date); if (t.week) return "Wk " + fmtShort(t.week); return ""; }
+export function whenLabel(t: Task) { if (t.date) return (t.date === todayStr() ? "Today" : fmtShort(t.date)) + (t.start ? " " + t.start : ""); if (t.week) return "Wk " + fmtShort(t.week); return ""; }
 
 export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact?: boolean; hide?: ("company" | "fn" | "order" | "when" | "asset")[]; className?: string }) {
   useStore();
@@ -82,6 +91,7 @@ export function TaskRow({ t, compact, hide = [], className }: { t: Task; compact
       </div>
       <div className="flex shrink-0 items-center opacity-80 group-hover:opacity-100">
         {compact && <PlanPopover t={t}><button className="mr-1"><QBadge q={q} /></button></PlanPopover>}
+        <PlanPopover t={t}><Button variant="ghost" size="icon-sm" title="Day and time slot" aria-label="Day and time slot" className={t.start ? "text-brand" : "text-muted-foreground"}><CalendarClock /></Button></PlanPopover>
         <Button variant="ghost" size="icon-sm" onClick={star} title={t.top ? "In Top 3" : "Add to today's Top 3"} className={t.top ? "text-brand" : "text-muted-foreground"}><Star className={t.top ? "fill-current" : ""} /></Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label="More"><MoreHorizontal /></Button></DropdownMenuTrigger>

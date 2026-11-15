@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { S, update, useStore } from "@/lib/store";
-import { inWeek, newTask, quad, Task, Meeting, QLABEL, QSUB, timeEntries, setDone, score } from "@/lib/model";
+import { inWeek, newTask, quad, Task, Meeting, QLABEL, QSUB, timeEntries, setDone, score, taskContext, endTime, company } from "@/lib/model";
 import { addDays, fmtDay, fmtShort, hm, minToTime, timeToMin, todayStr, weekDays, weekStart, DOW, parseYmd } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,13 +38,47 @@ function DayTasks({ list }: { list: Task[] }) {
   return (
     <div className="space-y-0.5">
       {list.map((t) => (
-        <div key={t.id} className="group flex items-start gap-1.5 rounded px-1 py-0.5 hover:bg-accent/60">
+        <div key={t.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/task", t.id); e.dataTransfer.effectAllowed = "move"; }} title="Drag into the hours below to give it a time" className="group flex cursor-grab items-start gap-1.5 rounded px-1 py-0.5 hover:bg-accent/60 active:cursor-grabbing">
           <Checkbox className="mt-[1px] h-4 w-4 rounded" checked={t.done} onCheckedChange={(v) => update(() => setDone(t, !!v))} />
           <button onClick={() => setUI({ taskSheet: t.id })} className={cn("min-w-0 flex-1 text-left text-[12px] leading-snug", t.done && "text-muted-foreground line-through")}>
             <CompanyDot id={t.company} className="mr-1 align-middle" />{t.top ? <b className="text-brand">#{t.top} </b> : null}{t.t}
+            {taskContext(S, t) && <span className="block truncate text-[10.5px] text-muted-foreground">{taskContext(S, t)}</span>}
           </button>
           {quad(t) && <span className={cn("mt-[1px] shrink-0 rounded px-1 text-[10px] font-bold", qColor[quad(t)!])}>Q{quad(t)}</span>}
         </div>))}
+    </div>);
+}
+
+const DRAG = "text/task";
+const dropTask = (e: React.DragEvent, d: string, start: string | null) => {
+  const id = e.dataTransfer.getData(DRAG); if (!id) return; e.preventDefault();
+  update(() => { const t = S.tasks.find((x) => x.id === id); if (!t) return; if (t.date !== d) t.top = 0; t.date = d; t.week = null; t.start = start; if (start && !t.est) t.est = 60; });
+};
+const allowDrop = (e: React.DragEvent) => { if (e.dataTransfer.types.includes(DRAG)) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } };
+/** Side-by-side lanes for things that overlap in time. */
+function lanes<T>(items: { s: number; e: number; x: T }[]) {
+  const out: { s: number; e: number; x: T; lane: number; of: number }[] = [];
+  const sorted = [...items].sort((a, b) => a.s - b.s || b.e - a.e);
+  let group: typeof out = []; let gEnd = -1;
+  const flush = () => { const n = Math.max(1, ...group.map((g) => g.lane + 1)); group.forEach((g) => (g.of = n)); group = []; };
+  for (const it of sorted) {
+    if (it.s >= gEnd) { flush(); gEnd = -1; }
+    const used = group.filter((g) => g.e > it.s).map((g) => g.lane); let lane = 0; while (used.includes(lane)) lane++;
+    const o = { ...it, lane, of: 1 }; group.push(o); out.push(o); gEnd = Math.max(gEnd, it.e);
+  }
+  flush(); return out;
+}
+function TaskBlock({ t, style, narrow }: { t: Task; style: React.CSSProperties; narrow?: boolean }) {
+  const c = company(S, t.company); const ctx = taskContext(S, t);
+  return (
+    <div draggable onDragStart={(e) => { e.dataTransfer.setData(DRAG, t.id); e.dataTransfer.effectAllowed = "move"; }} style={{ ...style, borderLeftColor: c?.color || "hsl(var(--oth))" }}
+      className={cn("absolute z-[6] flex cursor-grab gap-1 overflow-hidden rounded-md border border-l-[3px] bg-card px-1.5 py-1 text-[11px] leading-tight shadow-sm hover:bg-accent", t.done && "opacity-55")}
+      title={`${t.t}${ctx ? "\n" + ctx : ""}\n${t.start}–${endTime(t.start!, t.est || 60)}`}>
+      {!narrow && <Checkbox className="mt-[1px] h-3.5 w-3.5 shrink-0 rounded" checked={t.done} onCheckedChange={(v) => update(() => setDone(t, !!v))} onClick={(e) => e.stopPropagation()} aria-label="Done" />}
+      <button className="min-w-0 flex-1 text-left" onClick={() => setUI({ taskSheet: t.id })}>
+        <div className={cn("truncate font-semibold", t.done && "line-through")}>{t.t}</div>
+        <div className="truncate text-muted-foreground num">{t.start}–{endTime(t.start!, t.est || 60)}{ctx ? ` · ${ctx}` : ""}</div>
+      </button>
     </div>);
 }
 
@@ -66,8 +100,8 @@ function Calendar({ ws, days, tasks, meetings }: { ws: string; days: string[]; t
           </div>
           <div className="grid grid-cols-[48px_repeat(7,minmax(0,1fr))] border-b">
             <div className="px-1 pt-2 text-right text-[10px] text-muted-foreground">Tasks</div>
-            {days.map((d) => { const list = tasks.filter((t) => t.date === d).sort(sortT); const untimed = meetings.filter((m) => m.date === d && !m.start); return (
-              <div key={d} className={cn("max-h-[260px] min-h-[90px] overflow-y-auto border-l p-1.5", d === today && "bg-brand/5")}>
+            {days.map((d) => { const list = tasks.filter((t) => t.date === d && !t.start).sort(sortT); const untimed = meetings.filter((m) => m.date === d && !m.start); return (
+              <div key={d} data-band={d} onDragOver={allowDrop} onDrop={(e) => dropTask(e, d, null)} className={cn("max-h-[260px] min-h-[90px] overflow-y-auto border-l p-1.5", d === today && "bg-brand/5")}>
                 <DayTasks list={list} />
                 {untimed.map((m) => <MeetingBlock key={m.id} m={m} className="mt-1 w-full" />)}
                 <DayAdd d={d} />
@@ -76,11 +110,15 @@ function Calendar({ ws, days, tasks, meetings }: { ws: string; days: string[]; t
           <div className="relative grid grid-cols-[48px_repeat(7,minmax(0,1fr))]" style={{ height: (H1 - H0) * PX }}>
             <div className="relative">{[...Array(H1 - H0)].map((_, i) => <div key={i} className="absolute right-1.5 -translate-y-1/2 text-[10px] text-muted-foreground num" style={{ top: i * PX }}>{i ? minToTime((H0 + i) * 60) : ""}</div>)}</div>
             {days.map((d) => (
-              <div key={d} className={cn("relative border-l", d === today && "bg-brand/5")}>
+              <div key={d} data-hours={d} onDragOver={allowDrop} onDrop={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); const m = Math.round((((e.clientY - r.top) / PX) * 60) / 15) * 15 + H0 * 60; dropTask(e, d, minToTime(Math.min(Math.max(m, H0 * 60), H1 * 60 - 15))); }} className={cn("relative border-l", d === today && "bg-brand/5")}>
                 {[...Array(H1 - H0)].map((_, i) => <button key={i} aria-label={`New meeting ${fmtDay(d)} ${H0 + i}:00`} onClick={() => setUI({ meeting: { date: d, start: minToTime((H0 + i) * 60), company: getUIcompany() || undefined } })} className="absolute inset-x-0 border-t border-border/60 hover:bg-accent/40" style={{ top: i * PX, height: PX }} />)}
                 {d === today && nowMin > H0 * 60 && nowMin < H1 * 60 && <div className="pointer-events-none absolute inset-x-0 z-10 h-[2px] bg-destructive" style={{ top: ((nowMin - H0 * 60) / 60) * PX }} />}
-                {meetings.filter((m) => m.date === d && m.start).map((m) => { const s = timeToMin(m.start!)!; const top = Math.max(0, ((s - H0 * 60) / 60) * PX); const h = Math.max(22, ((m.mins || 60) / 60) * PX - 2);
-                  return <MeetingBlock key={m.id} m={m} className="absolute inset-x-1 z-[5]" style={{ top, height: h }} />; })}
+                {lanes<{ m?: Meeting; t?: Task }>([
+                  ...meetings.filter((m) => m.date === d && m.start).map((m) => { const s = timeToMin(m.start!)!; return { s, e: s + (m.mins || 60), x: { m } }; }),
+                  ...tasks.filter((t) => t.date === d && t.start).map((t) => { const s = timeToMin(t.start!)!; return { s, e: s + (t.est || 60), x: { t } }; }),
+                ]).map(({ s, e, x, lane, of }) => {
+                  const style: React.CSSProperties = { top: Math.max(0, ((s - H0 * 60) / 60) * PX), height: Math.max(22, ((e - s) / 60) * PX - 2), left: `calc(${(lane / of) * 100}% + 2px)`, width: `calc(${100 / of}% - 4px)` };
+                  return x.m ? <MeetingBlock key={x.m.id} m={x.m} className="absolute z-[5]" style={style} /> : <TaskBlock key={x.t!.id} t={x.t!} style={style} narrow={of > 1} />; })}
               </div>))}
           </div>
         </div>
@@ -99,7 +137,7 @@ function PhoneAgenda({ days, tasks, meetings }: { days: string[]; tasks: Task[];
   const [d, setD] = React.useState(days.includes(todayStr()) ? todayStr() : days[0]);
   React.useEffect(() => { if (!days.includes(d)) setD(days.includes(todayStr()) ? todayStr() : days[0]); }, [days[0]]);
   const ms = meetings.filter((m) => m.date === d).sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
-  const ts = tasks.filter((t) => t.date === d).sort((a, b) => Number(a.done) - Number(b.done) || (a.top || 9) - (b.top || 9) || (quad(a) || 5) - (quad(b) || 5));
+  const ts = tasks.filter((t) => t.date === d).sort((a, b) => Number(a.done) - Number(b.done) || (a.start || "99").localeCompare(b.start || "99") || (a.top || 9) - (b.top || 9) || (quad(a) || 5) - (quad(b) || 5));
   return (
     <div>
       <div className="grid grid-cols-7 gap-1">
