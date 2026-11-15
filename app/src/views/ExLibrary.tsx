@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Empty } from "@/components/bits";
+import { MuscleMap } from "./Builder";
+/** Muscle diagram for entries without photos: primary muscles full, secondary half. */
+const libLoad = (x: LibEx) => { const l: Record<string, number> = {}; x.s.forEach((m) => (l[m] = 0.5)); x.p.forEach((m) => (l[m] = 1)); return l; };
+function MusclePic({ x, className }: { x: LibEx; className?: string }) { return <div className={cn("grid place-items-center rounded-lg bg-muted/60 p-2", className)}><MuscleMap load={libLoad(x)} className="h-full max-h-full w-auto" /></div>; }
 import { Dumbbell, ExternalLink, ListPlus, Pause, Play, Plus, Search, Youtube } from "lucide-react";
 
 /* ---------- open the detail sheet from anywhere ---------- */
@@ -33,7 +37,7 @@ export function addToRoutine(r: Routine, exId: string, kind?: string) {
 function Frames({ x, className }: { x: LibEx; className?: string }) {
   const [i, setI] = React.useState(0); const [play, setPlay] = React.useState(true); const [err, setErr] = React.useState(false);
   React.useEffect(() => { if (!play || x.im.length < 2) return; const t = setInterval(() => setI((v) => (v + 1) % x.im.length), 1000); return () => clearInterval(t); }, [play, x.id]);
-  if (!x.im.length || err) return <div className={cn("grid place-items-center rounded-lg bg-muted text-muted-foreground", className)}><Dumbbell className="h-8 w-8" /></div>;
+  if (!x.im.length || err) return x.p.length || x.s.length ? <MusclePic x={x} className={className} /> : <div className={cn("grid place-items-center rounded-lg bg-muted text-muted-foreground", className)}><Dumbbell className="h-8 w-8" /></div>;
   return (
     <button type="button" onClick={() => setPlay(!play)} className={cn("relative overflow-hidden rounded-lg bg-white", className)} aria-label={play ? "Pause demo" : "Play demo"}>
       {x.im.map((_, k) => <img key={k} src={imgUrl(x, k)} alt={`${x.n}, ${k ? "end" : "start"} position`} onError={() => setErr(true)} className={cn("absolute inset-0 h-full w-full object-contain transition-opacity duration-300", k === i ? "opacity-100" : "opacity-0")} />)}
@@ -70,7 +74,7 @@ export function ExDetailHost() {
           <DialogHeader>
             <DialogTitle className="pr-6 text-xl">{x.n}</DialogTitle>
             <DialogDescription asChild><div className="flex flex-wrap gap-1.5 pt-1">
-              <Badge variant="secondary">{CATS.find((c) => c[0] === x.c)?.[1] || cap(x.c)}</Badge><Badge variant="outline">{cap(x.l)}</Badge><Badge variant="outline">{cap(x.e)}</Badge>
+              <Badge variant="secondary">{CATS.find((c) => c[0] === x.c)?.[1] || cap(x.c)}</Badge>{x.l && <Badge variant="outline">{cap(x.l)}</Badge>}<Badge variant="outline">{cap(x.e)}</Badge>
               {x.m && <Badge variant="outline">{cap(x.m)}</Badge>}{x.f && x.f !== "static" && <Badge variant="outline">{cap(x.f)}</Badge>}
             </div></DialogDescription>
           </DialogHeader>
@@ -82,6 +86,7 @@ export function ExDetailHost() {
                 <div className="mt-1.5 flex gap-3 text-[11px] text-muted-foreground"><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-brand" />Primary</span><span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-brand/60" />Secondary</span></div></div>
               <div className="space-y-2">
                 <Button asChild variant="outline" className="w-full justify-start"><a href={ytSearch(x.n)} target="_blank" rel="noreferrer"><Youtube className="text-red-600" />Watch tutorials on YouTube<ExternalLink className="ml-auto h-3.5 w-3.5 opacity-60" /></a></Button>
+                <Button asChild variant="outline" className="w-full justify-start"><a href={"https://www.google.com/search?q=" + encodeURIComponent("musclewiki " + x.n)} target="_blank" rel="noreferrer"><Search />Look it up on MuscleWiki<ExternalLink className="ml-auto h-3.5 w-3.5 opacity-60" /></a></Button>
                 {editVid ? <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (vid && !ytEmbed(vid)) return toast("That doesn't look like a YouTube link."); update((S) => { S.gym.vids = S.gym.vids || {}; if (vid) S.gym.vids[id] = vid.trim(); else delete S.gym.vids[id]; }); setEditVid(false); }}>
                   <Input autoFocus value={vid} onChange={(e) => setVid(e.target.value)} placeholder="Paste a YouTube link" className="h-9" /><Button type="submit" size="sm">Save</Button></form>
                   : <button onClick={() => setEditVid(true)} className="text-xs text-muted-foreground underline-offset-2 hover:underline">{saved ? "Change your saved video" : "Found a good one? Save it here to play it inline"}</button>}
@@ -132,14 +137,14 @@ export function LibraryTab() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
         {list.slice(0, n).map((x) => (
           <button key={x.id} onClick={() => openExDetail(x.id)} className="group overflow-hidden rounded-lg border bg-card text-left transition-colors hover:border-brand">
-            <div className="aspect-[4/3] bg-white">{x.im.length ? <img loading="lazy" src={imgUrl(x)} alt="" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center bg-muted text-muted-foreground"><Dumbbell /></div>}</div>
+            <div className="aspect-[4/3] bg-white">{x.im.length ? <img loading="lazy" src={imgUrl(x)} alt="" className="h-full w-full object-contain" /> : x.p.length ? <MusclePic x={x} className="h-full rounded-none" /> : <div className="grid h-full place-items-center bg-muted text-muted-foreground"><Dumbbell /></div>}</div>
             <div className="p-2.5"><div className="line-clamp-2 text-sm font-medium leading-snug group-hover:text-brand">{x.n}</div>
               <div className="mt-0.5 truncate text-xs text-muted-foreground">{x.p.map(cap).join(", ")} · {cap(x.e)}</div></div>
           </button>))}
       </div>
       {!list.length && <Empty>No exercise matches. Try fewer filters.</Empty>}
       {list.length > n && <div className="flex justify-center"><Button variant="outline" onClick={() => setN(n + PAGE)}>Show more ({list.length - n} left)</Button></div>}
-      <p className="pt-2 text-center text-[11px] text-muted-foreground">Exercise data and photos from the public-domain free-exercise-db project.</p>
+      <p className="pt-2 text-center text-[11px] text-muted-foreground">Exercise data and photos from free-exercise-db (public domain); more exercises from exercises-dataset by Hasan Emir Yıldırım (MIT).</p>
     </div>);
 }
 

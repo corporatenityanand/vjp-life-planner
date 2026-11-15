@@ -1,9 +1,10 @@
-// Exercise library: 876 exercises from free-exercise-db (public domain, Unlicense).
+// Exercise library: 1,993 exercises. 876 from free-exercise-db (public domain, Unlicense, with photos) plus 1,117 from
+// exercises-dataset by Hasan Emir Yıldırım (MIT, data only, ids "hx-…"; its GIFs are © Gym visual and not used). See data/NOTICE.md.
 // Bundled as a lazy chunk; images are served from the project's GitHub repo.
 import * as React from "react";
 import type { Exercise, State } from "./model";
 
-export type LibEx = { id: string; n: string; c: string; l: string; e: string; f: string; m: string; p: string[]; s: string[]; i: string[]; im: string[] };
+export type LibEx = { id: string; n: string; c: string; l: string; e: string; f: string; m: string; p: string[]; s: string[]; i: string[]; im: string[]; src?: string };
 
 let cache: LibEx[] | null = null; let pending: Promise<LibEx[]> | null = null;
 export function loadLib() {
