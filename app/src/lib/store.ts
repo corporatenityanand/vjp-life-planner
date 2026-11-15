@@ -41,6 +41,8 @@ export type SyncMode = "loading" | "synced" | "saving" | "dirty" | "local" | "er
 export let S: State = blank();
 export let CFG: { url: string; token: string } | null = (() => { try { return JSON.parse(localStorage.getItem(LS_CFG) || "null"); } catch { return null; } })();
 let dbReady = false, inFlight = false, again = false, lastErr = "";
+const LS_FIRST = "lp2-first-load";
+let firstLoad = (() => { try { return !!localStorage.getItem(LS_FIRST); } catch { return false; } })();
 let cur: Record<string, string> = {};
 const DIRTY = new Set<string>((() => { try { return JSON.parse(localStorage.getItem(LS_DIRTY) || "[]"); } catch { return []; } })());
 export const sync = { mode: (CFG ? "loading" : "local") as SyncMode, err: "", saving: false };
@@ -117,13 +119,22 @@ export async function connect() {
   if (!CFG) { dbReady = false; setSync("local"); runMigrate(); return; }
   setSync("loading");
   try {
-    const j = await callSheet("GET"); applyRemote(j.docs || {}); dbReady = true; lastErr = "";
+    const j = await callSheet("GET"); const remote = j.docs || {};
+    if (firstLoad) {
+      // A device connecting for the first time must never push its own (usually empty) copy over the Sheet.
+      // If the Sheet already has data, start from the Sheet; if the Sheet is empty, send this device's data up.
+      if (Object.keys(remote).length) { S = blank(); cur = {}; DIRTY.clear(); }
+      else { for (const k in toDocs(S)) DIRTY.add(k); }
+      saveDirty(); firstLoad = false; try { localStorage.removeItem(LS_FIRST); } catch {}
+    }
+    applyRemote(remote); dbReady = true; lastErr = "";
     runMigrate();
     if (DIRTY.size) pushNow(false); else setSync("synced");
   } catch (e: any) { lastErr = e.message || String(e); setSync("error", "couldn't load from Sheet (" + lastErr + ")"); }
 }
 function runMigrate() { const m = migrate(S); const g = seedGym(S); const r = runRepeats(S); if (m || g || r) update(() => {}); else emit(); if (m) toast("Moved your projects into the new Companies and Sales orders layout."); }
 export function setConfig(c: { url: string; token: string } | null) {
+  if (c && c.url !== CFG?.url) { firstLoad = true; try { localStorage.setItem(LS_FIRST, "1"); } catch {} }
   CFG = c; try { if (c) localStorage.setItem(LS_CFG, JSON.stringify(c)); else localStorage.removeItem(LS_CFG); } catch {}
   dbReady = false; return connect();
 }

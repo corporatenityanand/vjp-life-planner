@@ -44,8 +44,8 @@ export function TaskSheet() {
           <div className="grid grid-cols-4 gap-1.5">{[1, 2, 3, 4].map((n) => <button key={n} onClick={() => update(() => setQ(t, q === n ? 0 : n))} className={cn("rounded-md border px-1 py-1.5 text-xs font-semibold", q === n ? qColor[n] : "text-muted-foreground hover:bg-accent")}>Q{n}<div className="text-[10px] font-medium">{QLABEL[n]}</div></button>)}</div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5"><Label>Day</Label><Input type="date" value={t.date || ""} onChange={(e) => update((S) => { const old = t.date; t.date = e.target.value || null; t.top = 0; if (!t.date) t.start = null; if (old) normalizeTop(S, old); if (t.date) t.week = null; })} /></div>
-          <div className="space-y-1.5"><Label>Or just the week of</Label><Input type="date" value={t.week || ""} onChange={(e) => update(() => { t.week = e.target.value ? weekStart(e.target.value) : null; if (t.week) { t.date = null; t.start = null; t.top = 0; } })} /></div>
+          <div className="space-y-1.5"><Label>Day</Label><Input type="date" value={t.date || ""} onChange={(e) => { if (e.target.value && e.target.value < "2000") return; update((S) => { const old = t.date; t.date = e.target.value || null; t.top = 0; if (!t.date) t.start = null; if (old) normalizeTop(S, old); if (t.date) t.week = null; }); }} /></div>
+          <div className="space-y-1.5"><Label>Or just the week of</Label><Input type="date" value={t.week || ""} onChange={(e) => e.target.value && e.target.value < "2000" ? undefined : update(() => { t.week = e.target.value ? weekStart(e.target.value) : null; if (t.week) { t.date = null; t.start = null; t.top = 0; } })} /></div>
         </div>
         {t.date && <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5"><Label>Start time</Label><Input type="time" step={900} value={t.start || ""} onChange={(e) => update(() => { t.start = e.target.value || null; if (t.start && !t.est) t.est = 60; })} /></div>
